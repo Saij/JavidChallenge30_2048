@@ -117,6 +117,9 @@ protected:
 		wstring sScoreString = L"Score: ";
 		sScoreString.append(to_wstring(m_nScore));
 		DrawString(1, m_nFieldSize + 1, sScoreString, FG_WHITE);
+
+		// Print exit help
+		DrawString(1, m_nFieldSize + 3, L"Press ESC to exit", FG_WHITE);
 	}
 
 	void GameStateTitle(float fElapsedTime)
