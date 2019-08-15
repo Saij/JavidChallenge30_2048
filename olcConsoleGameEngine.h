@@ -973,7 +973,7 @@ private:
 			if (OnUserDestroy())
 			{
 				// User has permitted destroy, so exit and clean up
-				delete[] m_bufScreen;
+				//delete[] m_bufScreen;
 				SetConsoleActiveScreenBuffer(m_hOriginalConsole);
 				m_cvGameFinished.notify_one();
 			}

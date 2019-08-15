@@ -6,7 +6,8 @@ using namespace std;
 
 enum GAME_STATE {
 	GAME_STATE_TITLE = 0x0001,
-	GAME_STATE_START = 0x0002
+	GAME_STATE_START = 0x0002,
+	GAME_STATE_EXIT  = 0x0003
 };
 
 class c2048 : public olcConsoleGameEngine
@@ -21,6 +22,11 @@ private:
 	GAME_STATE m_nGameState = GAME_STATE_TITLE;
 	wstring m_sTitleGraphic = L"";
 	int m_nTitleGraphicWidth = 0;
+	int m_nTileSize = 5;
+	int m_nFieldSize = 0;
+	int m_nFieldOffsetX = 0;
+	int* m_aGrid;
+	int m_nScore = 0;
 
 protected:
 	virtual bool OnUserCreate()
@@ -47,6 +53,18 @@ protected:
 		// Divide the length by 7 rows
 		m_nTitleGraphicWidth = m_sTitleGraphic.length() / 7;
 
+		m_nFieldSize = (m_nTileSize + 1) * 4 + 1;
+		m_nFieldOffsetX = (int)(ScreenWidth() / 2 - m_nFieldSize / 2);
+
+		m_aGrid = new int[16];
+		memset(m_aGrid, 0x00, 16 * sizeof(int));
+
+		return true;
+	}
+
+	virtual bool OnUserDestroy()
+	{
+		delete[] m_aGrid;
 		return true;
 	}
 
@@ -64,6 +82,9 @@ protected:
 		case GAME_STATE_START:
 			GameStateStart(fElapsedTime);
 			break;
+
+		case GAME_STATE_EXIT:
+			return false;
 		}
 
 		return true;
@@ -71,7 +92,31 @@ protected:
 
 	void GameStateStart(float fElapsedTime)
 	{
-		Fill(0, 0, ScreenWidth(), ScreenHeight(), PIXEL_SOLID, FG_GREY);
+		if (GetKey(VK_ESCAPE).bReleased) {
+			m_nGameState = GAME_STATE_EXIT;
+			return;
+		}
+
+		// Draw the field
+		Fill(0, 0, 30, m_nFieldSize, PIXEL_SOLID, FG_DARK_GREY);
+
+		for (int x = 0; x < 4; x++) {
+			for (int y = 0; y < 4; y++) {
+				int nValue = m_aGrid[y * 4 + x];
+
+				// Just draw a black rectangle
+				int nStartX = 1 + m_nFieldOffsetX + (x * (m_nTileSize + 1));
+				int nEndX = nStartX + m_nTileSize;
+				int nStartY = 1 + y * (m_nTileSize + 1);
+				int nEndY = nStartY + m_nTileSize;
+				Fill(nStartX, nStartY, nEndX, nEndY, PIXEL_SOLID, FG_BLACK);
+			}
+		}
+
+		// Print score
+		wstring sScoreString = L"Score: ";
+		sScoreString.append(to_wstring(m_nScore));
+		DrawString(1, m_nFieldSize + 1, sScoreString, FG_WHITE);
 	}
 
 	void GameStateTitle(float fElapsedTime)
