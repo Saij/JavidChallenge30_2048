@@ -4,6 +4,8 @@ using namespace std;
 
 #include "olcConsoleGameEngine.h"
 
+typedef pair<int, int> Coords;
+
 enum GAME_STATE {
 	GAME_STATE_TITLE = 0x0001,
 	GAME_STATE_START = 0x0002,
@@ -20,13 +22,16 @@ public:
 
 private:
 	GAME_STATE m_nGameState = GAME_STATE_TITLE;
+	int* m_aGrid;
+	int m_nScore;
+	int m_nNumberSystem = 30;
+
 	wstring m_sTitleGraphic = L"";
 	int m_nTitleGraphicWidth = 0;
 	int m_nTileSize = 5;
 	int m_nFieldSize = 0;
 	int m_nFieldOffsetX = 0;
-	int* m_aGrid;
-	int m_nScore = 0;
+
 
 protected:
 	virtual bool OnUserCreate()
@@ -57,9 +62,23 @@ protected:
 		m_nFieldOffsetX = (int)(ScreenWidth() / 2 - m_nFieldSize / 2);
 
 		m_aGrid = new int[16];
-		memset(m_aGrid, 0x00, 16 * sizeof(int));
 
+		ResetGameData();
+		
 		return true;
+	}
+
+	void ResetGameData()
+	{
+		// Reset complete grid
+		memset(m_aGrid, 0x00, 16 * sizeof(int));
+		
+		m_nScore = 0;
+		m_nGameState = GAME_STATE_TITLE;
+
+		// Add 2 numbers in random cells
+		AddNewNumber();
+		AddNewNumber();
 	}
 
 	virtual bool OnUserDestroy()
@@ -89,6 +108,118 @@ protected:
 
 		return true;
 	}
+	
+	// Calculate all available cells
+	vector<Coords> GetAvailableCells()
+	{
+		vector<Coords> aAvailableCells;
+
+		for (int x = 0; x < 4; x++) {
+			for (int y = 0; y < 4; y++) {
+				int nCellIndex = y * 4 + x;
+				if (m_aGrid[nCellIndex] == 0) {
+					aAvailableCells.push_back(make_pair(x, y));
+				}
+			}
+		}
+		
+		return aAvailableCells;
+	}
+
+	void AddNewNumber()
+	{
+		int nCellValue = (rand() < RAND_MAX * 0.9f) ? 2 : 4;
+		AddNewNumber(nCellValue);
+	}
+
+	void AddNewNumber(int nValue) 
+	{
+		vector<Coords> aAvailableCells = GetAvailableCells();
+
+		// Get random available cell
+		Coords oCell = aAvailableCells[rand() % aAvailableCells.size()];
+		int nCellIndex = oCell.second * 4 + oCell.first;
+
+		m_aGrid[nCellIndex] = nValue;
+	}
+
+	// Hardcoded because we only support till 2048
+	void GetCellColor(int nValue, short &fgColor, short &bgColor, short &textColor)
+	{
+		switch (nValue) {
+		case 2:
+			fgColor = FG_YELLOW;
+			bgColor = BG_YELLOW;
+			textColor = FG_BLACK;
+			break;
+
+		case 4:
+			fgColor = FG_DARK_YELLOW;
+			bgColor = BG_DARK_YELLOW;
+			textColor = FG_BLACK;
+			break;
+
+		case 8:
+			fgColor = FG_RED;
+			bgColor = BG_RED;
+			textColor = FG_WHITE;
+			break;
+
+		case 16:
+			fgColor = FG_DARK_RED;
+			bgColor = BG_DARK_RED;
+			textColor = FG_WHITE;
+			break;
+
+		case 32:
+			fgColor = FG_GREEN;
+			bgColor = BG_GREEN;
+			textColor = FG_BLACK;
+			break;
+
+		case 64:
+			fgColor = FG_DARK_GREEN;
+			bgColor = BG_DARK_GREEN;
+			textColor = FG_WHITE;
+			break;
+
+		case 128:
+			fgColor = FG_BLUE;
+			bgColor = BG_BLUE;
+			textColor = FG_WHITE;
+			break;
+
+		case 256:
+			fgColor = FG_DARK_BLUE;
+			bgColor = BG_DARK_BLUE;
+			textColor = FG_WHITE;
+			break;
+
+		case 512:
+			fgColor = FG_CYAN;
+			bgColor = BG_CYAN;
+			textColor = FG_BLACK;
+			break;
+
+		case 1024:
+			fgColor = FG_DARK_CYAN;
+			bgColor = BG_DARK_CYAN;
+			textColor = FG_WHITE;
+			break;
+
+		case 2048:
+			fgColor = FG_WHITE;
+			bgColor = BG_WHITE;
+			textColor = FG_BLACK;
+			break;
+
+		default:
+			fgColor = FG_BLACK;
+			bgColor = BG_BLACK;
+			textColor = FG_BLACK;
+			break;
+		}
+	}
 
 	void GameStateStart(float fElapsedTime)
 	{
@@ -97,19 +228,95 @@ protected:
 			return;
 		}
 
+		if (GetKey(L'D').bHeld) {
+			if (GetKey(L'P').bReleased) {
+				AddNewNumber(2048);
+			}
+		}
+
+		if (GetKey(L'R').bReleased) {
+			ResetGameData();
+		}
+
+		bool bHasMoved = false;
+
+		if (GetKey(VK_RIGHT).bReleased) {
+			for (int i = 0; i < 4; i++) {
+				bool bHasSmthMoved = MoveCells(make_pair(3, i), make_pair(2, i), make_pair(1, i), make_pair(0, i));
+				bool bHasSmthCombined = CombineCells(make_pair(3, i), make_pair(2, i), make_pair(1, i), make_pair(0, i));
+				
+				if (bHasSmthMoved || bHasSmthCombined)
+					bHasSmthMoved |= MoveCells(make_pair(3, i), make_pair(2, i), make_pair(1, i), make_pair(0, i));
+
+				bHasMoved |= bHasSmthMoved | bHasSmthCombined;
+			}
+		}
+		else if (GetKey(VK_LEFT).bReleased) {
+			for (int i = 0; i < 4; i++) {
+				bool bHasSmthMoved = MoveCells(make_pair(0, i), make_pair(1, i), make_pair(2, i), make_pair(3, i));
+				bool bHasSmthCombined = CombineCells(make_pair(0, i), make_pair(1, i), make_pair(2, i), make_pair(3, i));
+					
+				if (bHasSmthMoved || bHasSmthCombined)
+					bHasSmthMoved |= MoveCells(make_pair(0, i), make_pair(1, i), make_pair(2, i), make_pair(3, i));
+
+				bHasMoved |= bHasSmthMoved | bHasSmthCombined;
+			}
+		}
+		else if (GetKey(VK_UP).bReleased) {
+			for (int i = 0; i < 4; i++) {
+				bool bHasSmthMoved = MoveCells(make_pair(i, 0), make_pair(i, 1), make_pair(i, 2), make_pair(i, 3));
+				bool bHasSmthCombined = CombineCells(make_pair(i, 0), make_pair(i, 1), make_pair(i, 2), make_pair(i, 3));
+
+				if (bHasSmthMoved || bHasSmthCombined)
+					bHasSmthMoved |= MoveCells(make_pair(i, 0), make_pair(i, 1), make_pair(i, 2), make_pair(i, 3));
+
+				bHasMoved |= bHasSmthMoved | bHasSmthCombined;
+			}
+		}
+		else if (GetKey(VK_DOWN).bReleased) {
+			for (int i = 0; i < 4; i++) {
+				bool bHasSmthMoved = MoveCells(make_pair(i, 3), make_pair(i, 2), make_pair(i, 1), make_pair(i, 0));
+				bool bHasSmthCombined = CombineCells(make_pair(i, 3), make_pair(i, 2), make_pair(i, 1), make_pair(i, 0));
+
+				if (bHasSmthMoved || bHasSmthCombined)
+					bHasSmthMoved |= MoveCells(make_pair(i, 3), make_pair(i, 2), make_pair(i, 1), make_pair(i, 0));
+
+				bHasMoved |= bHasSmthMoved | bHasSmthCombined;
+			}
+		}
+
+		if (bHasMoved) {
+			// Add new number
+			AddNewNumber();
+		}
+
 		// Draw the field
 		Fill(0, 0, 30, m_nFieldSize, PIXEL_SOLID, FG_DARK_GREY);
 
 		for (int x = 0; x < 4; x++) {
 			for (int y = 0; y < 4; y++) {
-				int nValue = m_aGrid[y * 4 + x];
+				int nValue = GetCellValue(make_pair(x, y));
+
+				short nFgColor;
+				short nBgColor;
+				short nTextColor;
+
+				GetCellColor(nValue, nFgColor, nBgColor, nTextColor);
 
 				// Just draw a black rectangle
 				int nStartX = 1 + m_nFieldOffsetX + (x * (m_nTileSize + 1));
 				int nEndX = nStartX + m_nTileSize;
 				int nStartY = 1 + y * (m_nTileSize + 1);
 				int nEndY = nStartY + m_nTileSize;
-				Fill(nStartX, nStartY, nEndX, nEndY, PIXEL_SOLID, FG_BLACK);
+				Fill(nStartX, nStartY, nEndX, nEndY, PIXEL_SOLID, nFgColor);
+
+				// Draw value of cell (only if greater then 0
+				if (nValue > 0) {
+					wstring sCell = to_wstring(nValue * (m_nNumberSystem / 2));
+					int nTextY = (int)(nStartY + m_nTileSize / 2);
+					int nTextX = (int)(nStartX + (m_nTileSize / 2) - sCell.length() / 2);
+					DrawString(nTextX, nTextY, sCell, nTextColor | nBgColor);
+				}
 			}
 		}
 
@@ -120,6 +327,123 @@ protected:
 
 		// Print exit help
 		DrawString(1, m_nFieldSize + 3, L"Press ESC to exit", FG_WHITE);
+	}
+
+	void SwitchCells(Coords oCell1, Coords oCell2)
+	{
+		SetCellValue(oCell1, GetCellValue(oCell2));
+		SetCellValue(oCell2, 0);
+	}
+
+	bool MoveCells(Coords oCell1, Coords oCell2, Coords oCell3, Coords oCell4)
+	{
+		bool bHasMoved = false;
+		// Ignore cell 1
+
+		// Process cell 2
+		if (GetCellValue(oCell2) > 0 && GetCellValue(oCell1) == 0) {
+			SwitchCells(oCell1, oCell2);
+			bHasMoved = true;
+		}
+
+		// Process cell 3
+		if (GetCellValue(oCell3) > 0) {
+			if (GetCellValue(oCell1) == 0) {
+				SwitchCells(oCell1, oCell3);
+				bHasMoved = true;
+			}
+			else if (GetCellValue(oCell2) == 0) {
+				SwitchCells(oCell2, oCell3);
+				bHasMoved = true;
+			}
+		}
+
+		// Process cell 4
+		if (GetCellValue(oCell4) > 0) {
+			if (GetCellValue(oCell1) == 0) {
+				SwitchCells(oCell1, oCell4);
+				bHasMoved = true;
+			}
+			else if (GetCellValue(oCell2) == 0) {
+				SwitchCells(oCell2, oCell4);
+				bHasMoved = true;
+			}
+			else if (GetCellValue(oCell3) == 0) {
+				SwitchCells(oCell3, oCell4);
+				bHasMoved = true;
+			}
+		}
+
+		return bHasMoved;
+	}
+
+	int AddCells(Coords oCell1, Coords oCell2)
+	{
+		SetCellValue(oCell1, GetCellValue(oCell1) + GetCellValue(oCell2));
+		SetCellValue(oCell2, 0);
+
+		return GetCellValue(oCell1);
+	}
+
+	bool CombineCells(Coords oCell1, Coords oCell2, Coords oCell3, Coords oCell4)
+	{
+		bool bHasCombined = false;
+		int nResult = 0;
+
+		if (GetCellValue(oCell1) > 0 && GetCellValue(oCell1) == GetCellValue(oCell2)) {
+			nResult = AddCells(oCell1, oCell2);
+			if (nResult == 4096) {
+				// Boooooooom
+				SetCellValue(oCell1, 0);
+				SetCellValue(oCell2, 0);
+			}
+
+			bHasCombined = true;
+
+			if (GetCellValue(oCell3) > 0 && GetCellValue(oCell3) == GetCellValue(oCell4)) {
+				int nNextResult = AddCells(oCell3, oCell4);
+				if (nNextResult == 4096) {
+					// Boooooooom
+					SetCellValue(oCell3, 0);
+					SetCellValue(oCell4, 0);
+				}
+
+				nResult += nNextResult;
+			}
+		}
+		else if (GetCellValue(oCell2) > 0 && GetCellValue(oCell2) == GetCellValue(oCell3)) {
+			nResult = AddCells(oCell2, oCell3);
+			if (nResult == 4096) {
+				// Boooooooom
+				SetCellValue(oCell2, 0);
+				SetCellValue(oCell3, 0);
+			}
+
+			bHasCombined = true;
+		}
+		else if (GetCellValue(oCell3) > 0 && GetCellValue(oCell3) == GetCellValue(oCell4)) {
+			nResult = AddCells(oCell3, oCell4);
+			if (nResult == 4096) {
+				// Boooooooom
+				SetCellValue(oCell3, 0);
+				SetCellValue(oCell4, 0);
+			}
+
+			bHasCombined = true;
+		}
+
+		m_nScore += nResult * (m_nNumberSystem / 2);
+		return bHasCombined;
+	}
+
+	int GetCellValue(Coords oCell)
+	{
+		return m_aGrid[oCell.second * 4 + oCell.first];
+	}
+
+	void SetCellValue(Coords oCell, int nValue)
+	{
+		m_aGrid[oCell.second * 4 + oCell.first] = nValue;
 	}
 
 	void GameStateTitle(float fElapsedTime)
@@ -141,10 +465,8 @@ protected:
 		int nOffsetBlinkTextY = nOffsetSubtitleY + 5;
 
 		// Draw the title graphic
-		for (int x = 0; x < m_nTitleGraphicWidth; x++)
-		{
-			for (int y = 0; y < 7; y++)
-			{
+		for (int x = 0; x < m_nTitleGraphicWidth; x++) {
+			for (int y = 0; y < 7; y++) {
 				if (m_sTitleGraphic[y * m_nTitleGraphicWidth + x] == L'#') {
 					Draw(x + nOffsetX, y + nOffsetY, PIXEL_SOLID, FG_WHITE);
 				}
@@ -156,14 +478,11 @@ protected:
 		DrawString((int)(ScreenWidth() / 2 - sSubtitle.length() / 2), nOffsetSubtitleY, sSubtitle, FG_WHITE);
 
 		fBlinkTiming += fElapsedTime;
-		if (fBlinkTiming <= 1.0f) 
-		{
+		if (fBlinkTiming <= 1.0f) {
 			// Draw the text
 			wstring sBlinkText = L"Press Space to start";
 			DrawString((int)(ScreenWidth() / 2 - sBlinkText.length() / 2), nOffsetBlinkTextY, sBlinkText, FG_WHITE);
-		}
-		else if (fBlinkTiming > 2.0f) 
-		{
+		} else if (fBlinkTiming > 2.0f) {
 			// Reset timer
 			fBlinkTiming = 0.0f;
 		}
