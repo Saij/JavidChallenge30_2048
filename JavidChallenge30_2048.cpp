@@ -1,20 +1,61 @@
-// JavidChallenge30_2048.cpp : Diese Datei enthält die Funktion "main". Hier beginnt und endet die Ausführung des Programms.
-//
-
 #include <iostream>
+#include "olcConsoleGameEngine.h"
+
+enum GAME_STATE {
+	GAME_STATE_START = 0x0001,
+};
+
+class c2048 : public olcConsoleGameEngine
+{
+public:
+	c2048()
+	{
+		m_sAppName = L"2048";
+	}
+
+private:
+	GAME_STATE m_nGameState = GAME_STATE_START;
+
+protected:
+	void ShowConsoleCursor(bool showFlag)
+	{
+		CONSOLE_CURSOR_INFO cursorInfo;
+
+		GetConsoleCursorInfo(m_hConsole, &cursorInfo);
+		cursorInfo.bVisible = showFlag; // set the cursor visibility
+		SetConsoleCursorInfo(m_hConsole, &cursorInfo);
+	}
+
+	virtual bool OnUserCreate()
+	{
+		// Hide blinking cursor
+		ShowConsoleCursor(false);
+
+		// Make window not resizable!
+		HWND consoleWindow = GetConsoleWindow();
+		SetWindowLong(consoleWindow, GWL_STYLE, GetWindowLong(consoleWindow, GWL_STYLE) & ~WS_MAXIMIZEBOX & ~WS_SIZEBOX);
+		return true;
+	}
+
+	virtual bool OnUserUpdate(float fElapsedTime)
+	{
+		// First we fill the complete screen black
+		Fill(0, 0, ScreenWidth(), ScreenHeight(), PIXEL_SOLID, FG_BLACK);
+
+		// Run code depending on game state
+		switch (m_nGameState) {
+		case GAME_STATE_START:
+			break;
+		}
+
+		return true;
+	}
+};
 
 int main()
 {
-    std::cout << "Hello World!\n";
+	c2048 game;
+	game.ConstructConsole(30, 30, 16, 16);
+	game.Start();
+	return 0;
 }
-
-// Programm ausführen: STRG+F5 oder "Debuggen" > Menü "Ohne Debuggen starten"
-// Programm debuggen: F5 oder "Debuggen" > Menü "Debuggen starten"
-
-// Tipps für den Einstieg: 
-//   1. Verwenden Sie das Projektmappen-Explorer-Fenster zum Hinzufügen/Verwalten von Dateien.
-//   2. Verwenden Sie das Team Explorer-Fenster zum Herstellen einer Verbindung mit der Quellcodeverwaltung.
-//   3. Verwenden Sie das Ausgabefenster, um die Buildausgabe und andere Nachrichten anzuzeigen.
-//   4. Verwenden Sie das Fenster "Fehlerliste", um Fehler anzuzeigen.
-//   5. Wechseln Sie zu "Projekt" > "Neues Element hinzufügen", um neue Codedateien zu erstellen, bzw. zu "Projekt" > "Vorhandenes Element hinzufügen", um dem Projekt vorhandene Codedateien hinzuzufügen.
-//   6. Um dieses Projekt später erneut zu öffnen, wechseln Sie zu "Datei" > "Öffnen" > "Projekt", und wählen Sie die SLN-Datei aus.
