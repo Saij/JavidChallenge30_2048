@@ -26,7 +26,7 @@ private:
 
 	wstring m_sTitleGraphic = L"";
 	int m_nTitleGraphicWidth = 0;
-	short m_nBlinkAnimation[10] = { FG_WHITE, FG_WHITE, FG_WHITE, FG_GREY, FG_DARK_GREY, FG_BLACK, FG_BLACK, FG_BLACK, FG_DARK_GREY, FG_GREY };
+	vector<short> m_nBlinkAnimation{ FG_WHITE, FG_WHITE, FG_WHITE, FG_GREY, FG_DARK_GREY, FG_BLACK, FG_BLACK, FG_BLACK, FG_DARK_GREY, FG_GREY };
 	int m_nBlinkAnimationSpeed = 10;
 
 	int m_nTileSize = 5;
@@ -539,7 +539,7 @@ private:
 		static float fBlinkTiming = 0;
 
 		fBlinkTiming += fElapsedTime * m_nBlinkAnimationSpeed;
-		int nAnimationIndex = ((int)fBlinkTiming) % (sizeof(m_nBlinkAnimation) / sizeof(m_nBlinkAnimation[0]));
+		int nAnimationIndex = ((int)fBlinkTiming) % m_nBlinkAnimation.size();
 
 		// Draw the text
 		wstring sBlinkText = L"Press Space to start";
