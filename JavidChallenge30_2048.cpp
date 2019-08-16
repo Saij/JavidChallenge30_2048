@@ -4,8 +4,6 @@ using namespace std;
 
 #include "olcConsoleGameEngine.h"
 
-typedef pair<int, int> Coords;
-
 enum GAME_STATE {
 	GAME_STATE_TITLE = 0x0001,
 	GAME_STATE_START = 0x0002,
@@ -97,19 +95,6 @@ protected:
 		return true;
 	}
 
-	void ResetGameData()
-	{
-		// Reset complete grid
-		memset(m_aGrid, 0x00, 16 * sizeof(int));
-		
-		m_nScore = 0;
-		m_nGameState = GAME_STATE_TITLE;
-
-		// Add 2 numbers in random cells
-		AddNewNumber();
-		AddNewNumber();
-	}
-
 	virtual bool OnUserDestroy()
 	{
 		delete[] m_aGrid;
@@ -137,11 +122,31 @@ protected:
 
 		return true;
 	}
-	
-	// Calculate all available cells
-	vector<Coords> GetAvailableCells()
+
+private:
+
+	/**
+	 * Resets the complete game to the beginning state
+	 */
+	void ResetGameData()
 	{
-		vector<Coords> aAvailableCells;
+		// Reset complete grid
+		memset(m_aGrid, 0x00, 16 * sizeof(int));
+
+		m_nScore = 0;
+		m_nGameState = GAME_STATE_TITLE;
+
+		// Add 2 numbers in random cells
+		AddNewNumber();
+		AddNewNumber();
+	}
+	
+	/**
+	 * Calculate all available cells
+	 */
+	vector<pair<int, int>> GetAvailableCells()
+	{
+		vector<pair<int, int>> aAvailableCells;
 
 		for (int x = 0; x < 4; x++) {
 			for (int y = 0; y < 4; y++) {
@@ -155,24 +160,37 @@ protected:
 		return aAvailableCells;
 	}
 
+	/**
+	 * Adds a new number to the grid
+	 * 90% it should be a 2 and 10% it should be a 4
+	 */
 	void AddNewNumber()
 	{
 		int nCellValue = (rand() < RAND_MAX * 0.9f) ? 2 : 4;
 		AddNewNumber(nCellValue);
 	}
 
+	/**
+	 * Adds the number specified in nValue to a random location to the grid.
+	 * But only to available spots.
+	 */
 	void AddNewNumber(int nValue) 
 	{
-		vector<Coords> aAvailableCells = GetAvailableCells();
+		vector<pair<int, int>> aAvailableCells = GetAvailableCells();
 
 		// Get random available cell
-		Coords oCell = aAvailableCells[rand() % aAvailableCells.size()];
+		pair<int, int> oCell = aAvailableCells[rand() % aAvailableCells.size()];
 		int nCellIndex = oCell.second * 4 + oCell.first;
 
 		m_aGrid[nCellIndex] = nValue;
 	}
 
-	// Hardcoded because we only support till 2048
+	/**
+	 * Gets the foreground color, background color and text color
+	 * for a specific value of a cell
+	 *
+	 * Hardcoded because we only support till 2048
+	 */
 	void GetCellColor(int nValue, short &fgColor, short &bgColor, short &textColor)
 	{
 		switch (nValue) {
@@ -250,6 +268,9 @@ protected:
 		}
 	}
 
+	/**
+	 * Update handler for GAME_STATE_START gamestate
+	 */
 	void GameStateStart(float fElapsedTime)
 	{
 		if (GetKey(VK_ESCAPE).bReleased) {
@@ -257,6 +278,8 @@ protected:
 			return;
 		}
 
+#ifdef _DEBUG
+		// DEBUG STUFF
 		if (GetKey(L'D').bHeld) {
 			if (GetKey(L'P').bReleased) {
 				AddNewNumber(2048);
@@ -266,6 +289,7 @@ protected:
 		if (GetKey(L'R').bReleased) {
 			ResetGameData();
 		}
+#endif
 
 		bool bHasMoved = false;
 
@@ -358,13 +382,13 @@ protected:
 		DrawString(1, m_nFieldSize + 3, L"Press ESC to exit", FG_WHITE);
 	}
 
-	void SwitchCells(Coords oCell1, Coords oCell2)
+	void SwitchCells(pair<int, int> oCell1, pair<int, int> oCell2)
 	{
 		SetCellValue(oCell1, GetCellValue(oCell2));
 		SetCellValue(oCell2, 0);
 	}
 
-	bool MoveCells(Coords oCell1, Coords oCell2, Coords oCell3, Coords oCell4)
+	bool MoveCells(pair<int, int> oCell1, pair<int, int> oCell2, pair<int, int> oCell3, pair<int, int> oCell4)
 	{
 		bool bHasMoved = false;
 		// Ignore cell 1
@@ -406,7 +430,7 @@ protected:
 		return bHasMoved;
 	}
 
-	int AddCells(Coords oCell1, Coords oCell2)
+	int AddCells(pair<int, int> oCell1, pair<int, int> oCell2)
 	{
 		SetCellValue(oCell1, GetCellValue(oCell1) + GetCellValue(oCell2));
 		SetCellValue(oCell2, 0);
@@ -414,7 +438,7 @@ protected:
 		return GetCellValue(oCell1);
 	}
 
-	bool CombineCells(Coords oCell1, Coords oCell2, Coords oCell3, Coords oCell4)
+	bool CombineCells(pair<int, int> oCell1, pair<int, int> oCell2, pair<int, int> oCell3, pair<int, int> oCell4)
 	{
 		bool bHasCombined = false;
 		int nResult = 0;
@@ -465,16 +489,21 @@ protected:
 		return bHasCombined;
 	}
 
-	int GetCellValue(Coords oCell)
+	int GetCellValue(pair<int, int> oCell)
 	{
 		return m_aGrid[oCell.second * 4 + oCell.first];
 	}
 
-	void SetCellValue(Coords oCell, int nValue)
+	void SetCellValue(pair<int, int> oCell, int nValue)
 	{
 		m_aGrid[oCell.second * 4 + oCell.first] = nValue;
 	}
 
+	/**
+	 * Handler for game state GAME_STATE_TITLE
+	 *
+	 * Renders the title screen
+	 */
 	void GameStateTitle(float fElapsedTime)
 	{
 		// First handle input
