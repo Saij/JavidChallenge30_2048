@@ -764,7 +764,7 @@ public:
 
 		// Create translated model vector of coordinate pairs
 		std::vector<std::pair<float, float>> vecTransformedCoordinates;
-		int verts = vecModelCoordinates.size();
+		int verts = (int)vecModelCoordinates.size();
 		vecTransformedCoordinates.resize(verts);
 
 		// Rotate
@@ -1104,7 +1104,7 @@ protected: // Audio Engine =====================================================
 		if (a.bSampleValid)
 		{
 			vecAudioSamples.push_back(a);
-			return vecAudioSamples.size();
+			return (unsigned int)vecAudioSamples.size();
 		}
 		else
 			return -1;
