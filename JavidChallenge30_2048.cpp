@@ -10,6 +10,13 @@ enum GAME_STATE {
 	GAME_STATE_EXIT  = 0x0003
 };
 
+enum ROTATION {
+	LEFT	= 0,
+	TOP		= 90,
+	RIGHT	= 180,
+	DOWN	= 270
+};
+
 struct sCell {
 	int nValue;
 	int nPosX;
@@ -106,7 +113,7 @@ private:
 	/**
 	 * Gets the cells index based on X and Y
 	 */
-	int GetCellIndex(int x, int y) 
+	int GetCellIndex(int x, int y, ROTATION nRotation) 
 	{
 		auto clamp = [](int val, int min, int max) -> int
 		{
@@ -117,7 +124,35 @@ private:
 		x = clamp(x, 0, 3);
 		y = clamp(y, 0, 3);
 
-		return y * 4 + x;
+		int nReturn = 0;
+
+		switch (nRotation)
+		{
+		case LEFT: // 0 degrees			//  0  1  2  3
+			nReturn = y * 4 + x;		//  4  5  6  7
+			break;						//  8  9 10 11
+										// 12 13 14 15
+
+		case TOP: // 90 degrees			// 12  8  4  0
+			nReturn = 12 + y - (x * 4);	// 13  9  5  1
+			break;						// 14 10  6  2
+										// 15 11  7  3
+
+		case RIGHT: // 180 degrees		// 15 14 13 12
+			nReturn = 15 - (y * 4) - x;	// 11 10  9  8
+			break;						//  7  6  5  4
+										//  3  2  1  0
+
+		case DOWN: // 270 degrees		//  3  7 11 15
+			nReturn = 3 - y + (x * 4);	//  2  6 10 14
+			break;						//  1  5  9 13
+		}								//  0  4  8 12
+
+		return nReturn;
+	}
+	int GetCellIndex(int x, int y)
+	{
+		return GetCellIndex(x, y, LEFT);
 	}
 
 	/**
@@ -144,34 +179,6 @@ private:
 			
 			DrawString(nTextX, nTextY, sCellText, nTextColor | nBgColor);
 		}
-	}
-
-	int Rotate(int px, int py, int r)
-	{
-		int pi = 0;
-		switch (r % 4)
-		{
-		case 0: // 0 degrees			//  0  1  2  3
-			pi = py * 4 + px;			//  4  5  6  7
-			break;						//  8  9 10 11
-										// 12 13 14 15
-
-		case 1: // 90 degrees			// 12  8  4  0
-			pi = 12 + py - (px * 4);	// 13  9  5  1
-			break;						// 14 10  6  2
-										// 15 11  7  3
-
-		case 2: // 180 degrees			// 15 14 13 12
-			pi = 15 - (py * 4) - px;	// 11 10  9  8
-			break;						//  7  6  5  4
-										//  3  2  1  0
-
-		case 3: // 270 degrees			//  3  7 11 15
-			pi = 3 - py + (px * 4);		//  2  6 10 14
-			break;						//  1  5  9 13
-		}								//  0  4  8 12
-
-		return pi;
 	}
 
 	/**
@@ -201,15 +208,15 @@ private:
 	/**
 	 * Calculate all available cells
 	 */
-	vector<pair<int, int>> GetAvailableCells()
+	vector<int> GetAvailableCells()
 	{
-		vector<pair<int, int>> aAvailableCells;
+		vector<int> aAvailableCells;
 
 		for (int x = 0; x < 4; x++) {
 			for (int y = 0; y < 4; y++) {
-				int nCellIndex = y * 4 + x;
+				int nCellIndex = GetCellIndex(x, y);
 				if (m_aGrid[nCellIndex].nValue == 0) {
-					aAvailableCells.push_back(make_pair(x, y));
+					aAvailableCells.push_back(nCellIndex);
 				}
 			}
 		}
@@ -233,11 +240,10 @@ private:
 	 */
 	void AddNewNumber(int nValue) 
 	{
-		vector<pair<int, int>> aAvailableCells = GetAvailableCells();
+		vector<int> aAvailableCells = GetAvailableCells();
 
 		// Get random available cell
-		pair<int, int> oCell = aAvailableCells[rand() % aAvailableCells.size()];
-		int nCellIndex = oCell.second * 4 + oCell.first;
+		int nCellIndex = aAvailableCells[rand() % aAvailableCells.size()];
 
 		m_aGrid[nCellIndex].nValue = nValue;
 	}
