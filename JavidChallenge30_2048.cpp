@@ -10,17 +10,23 @@ enum GAME_STATE {
 	GAME_STATE_EXIT  = 0x0003
 };
 
+struct sCell {
+	int nValue;
+	int nPosX;
+	int nPosY;
+};
+
 class c2048 : public olcConsoleGameEngine
 {
 public:
-	c2048()
+	c2048() : m_aGrid(16)
 	{
 		m_sAppName = L"2048";
 	}
 
 private:
 	GAME_STATE m_nGameState = GAME_STATE_TITLE;
-	int* m_aGrid;
+	vector<sCell> m_aGrid;
 	int m_nScore;
 	int m_nNumberSystem = 30;
 
@@ -63,8 +69,6 @@ protected:
 		m_nFieldSize = (m_nTileSize + 1) * 4 + 1;
 		m_nFieldOffsetX = (int)(ScreenWidth() / 2 - m_nFieldSize / 2);
 
-		m_aGrid = new int[16];
-
 		ResetGameData();
 		
 		return true;
@@ -72,7 +76,7 @@ protected:
 
 	virtual bool OnUserDestroy()
 	{
-		delete[] m_aGrid;
+		m_aGrid.clear();
 		return true;
 	}
 
@@ -99,6 +103,48 @@ protected:
 	}
 
 private:
+	/**
+	 * Gets the cells index based on X and Y
+	 */
+	int GetCellIndex(int x, int y) 
+	{
+		auto clamp = [](int val, int min, int max) -> int
+		{
+			return (val < min ? min : (val > max ? max : val));
+		};
+
+		// Clamp position
+		x = clamp(x, 0, 3);
+		y = clamp(y, 0, 3);
+
+		return y * 4 + x;
+	}
+
+	/**
+	 * Draws a cell
+	 */
+	void DrawCell(int x, int y)
+	{
+		sCell oCell = m_aGrid[GetCellIndex(x, y)];
+
+		short nFgColor;
+		short nBgColor;
+		short nTextColor;
+
+		GetCellColor(oCell.nValue, nFgColor, nBgColor, nTextColor);
+
+		// Just draw a colored rectangle
+		Fill(oCell.nPosX, oCell.nPosY, oCell.nPosX + m_nTileSize, oCell.nPosY + m_nTileSize, PIXEL_SOLID, nFgColor);
+
+		// Draw value of cell (only if greater then 0)
+		if (oCell.nValue > 0) {
+			wstring sCellText = to_wstring(oCell.nValue * (m_nNumberSystem / 2));
+			int nTextX = (int)(oCell.nPosX + (m_nTileSize / 2) - sCellText.length() / 2);
+			int nTextY = (int)(oCell.nPosY + m_nTileSize / 2);
+			
+			DrawString(nTextX, nTextY, sCellText, nTextColor | nBgColor);
+		}
+	}
 
 	int Rotate(int px, int py, int r)
 	{
@@ -134,7 +180,15 @@ private:
 	void ResetGameData()
 	{
 		// Reset complete grid
-		memset(m_aGrid, 0x00, 16 * sizeof(int));
+		for (int x = 0; x < 4; x++) {
+			for (int y = 0; y < 4; y++) {
+				int nCellIndex = GetCellIndex(x, y);
+
+				m_aGrid[nCellIndex].nValue = 0;
+				m_aGrid[nCellIndex].nPosX = 1 + m_nFieldOffsetX + (x * (m_nTileSize + 1));
+				m_aGrid[nCellIndex].nPosY = 1 + y * (m_nTileSize + 1);
+			}
+		}
 
 		m_nScore = 0;
 		m_nGameState = GAME_STATE_TITLE;
@@ -154,7 +208,7 @@ private:
 		for (int x = 0; x < 4; x++) {
 			for (int y = 0; y < 4; y++) {
 				int nCellIndex = y * 4 + x;
-				if (m_aGrid[nCellIndex] == 0) {
+				if (m_aGrid[nCellIndex].nValue == 0) {
 					aAvailableCells.push_back(make_pair(x, y));
 				}
 			}
@@ -185,7 +239,7 @@ private:
 		pair<int, int> oCell = aAvailableCells[rand() % aAvailableCells.size()];
 		int nCellIndex = oCell.second * 4 + oCell.first;
 
-		m_aGrid[nCellIndex] = nValue;
+		m_aGrid[nCellIndex].nValue = nValue;
 	}
 
 	/**
@@ -351,28 +405,7 @@ private:
 
 		for (int x = 0; x < 4; x++) {
 			for (int y = 0; y < 4; y++) {
-				int nValue = GetCellValue(make_pair(x, y));
-
-				short nFgColor;
-				short nBgColor;
-				short nTextColor;
-
-				GetCellColor(nValue, nFgColor, nBgColor, nTextColor);
-
-				// Just draw a black rectangle
-				int nStartX = 1 + m_nFieldOffsetX + (x * (m_nTileSize + 1));
-				int nEndX = nStartX + m_nTileSize;
-				int nStartY = 1 + y * (m_nTileSize + 1);
-				int nEndY = nStartY + m_nTileSize;
-				Fill(nStartX, nStartY, nEndX, nEndY, PIXEL_SOLID, nFgColor);
-
-				// Draw value of cell (only if greater then 0
-				if (nValue > 0) {
-					wstring sCell = to_wstring(nValue * (m_nNumberSystem / 2));
-					int nTextY = (int)(nStartY + m_nTileSize / 2);
-					int nTextX = (int)(nStartX + (m_nTileSize / 2) - sCell.length() / 2);
-					DrawString(nTextX, nTextY, sCell, nTextColor | nBgColor);
-				}
+				DrawCell(x, y);
 			}
 		}
 
@@ -494,12 +527,12 @@ private:
 
 	int GetCellValue(pair<int, int> oCell)
 	{
-		return m_aGrid[oCell.second * 4 + oCell.first];
+		return m_aGrid[GetCellIndex(oCell.first, oCell.second)].nValue;
 	}
 
 	void SetCellValue(pair<int, int> oCell, int nValue)
 	{
-		m_aGrid[oCell.second * 4 + oCell.first] = nValue;
+		m_aGrid[GetCellIndex(oCell.first, oCell.second)].nValue = nValue;
 	}
 
 	/**
