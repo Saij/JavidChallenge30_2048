@@ -26,40 +26,15 @@ private:
 
 	wstring m_sTitleGraphic = L"";
 	int m_nTitleGraphicWidth = 0;
+	short m_nBlinkAnimation[10] = { FG_WHITE, FG_WHITE, FG_WHITE, FG_GREY, FG_DARK_GREY, FG_BLACK, FG_BLACK, FG_BLACK, FG_DARK_GREY, FG_GREY };
+	int m_nBlinkAnimationSpeed = 10;
+
 	int m_nTileSize = 5;
 	int m_nFieldSize = 0;
 	int m_nFieldOffsetX = 0;
 
 
 protected:
-
-	int Rotate(int px, int py, int r)
-	{
-		int pi = 0;
-		switch (r % 4)
-		{
-		case 0: // 0 degrees			//  0  1  2  3
-			pi = py * 4 + px;			//  4  5  6  7
-			break;						//  8  9 10 11
-										// 12 13 14 15
-
-		case 1: // 90 degrees			// 12  8  4  0
-			pi = 12 + py - (px * 4);	// 13  9  5  1
-			break;						// 14 10  6  2
-										// 15 11  7  3
-
-		case 2: // 180 degrees			// 15 14 13 12
-			pi = 15 - (py * 4) - px;	// 11 10  9  8
-			break;						//  7  6  5  4
-										//  3  2  1  0
-
-		case 3: // 270 degrees			//  3  7 11 15
-			pi = 3 - py + (px * 4);		//  2  6 10 14
-			break;						//  1  5  9 13
-		}								//  0  4  8 12
-
-		return pi;
-	}
 
 	virtual bool OnUserCreate()
 	{
@@ -124,6 +99,34 @@ protected:
 	}
 
 private:
+
+	int Rotate(int px, int py, int r)
+	{
+		int pi = 0;
+		switch (r % 4)
+		{
+		case 0: // 0 degrees			//  0  1  2  3
+			pi = py * 4 + px;			//  4  5  6  7
+			break;						//  8  9 10 11
+										// 12 13 14 15
+
+		case 1: // 90 degrees			// 12  8  4  0
+			pi = 12 + py - (px * 4);	// 13  9  5  1
+			break;						// 14 10  6  2
+										// 15 11  7  3
+
+		case 2: // 180 degrees			// 15 14 13 12
+			pi = 15 - (py * 4) - px;	// 11 10  9  8
+			break;						//  7  6  5  4
+										//  3  2  1  0
+
+		case 3: // 270 degrees			//  3  7 11 15
+			pi = 3 - py + (px * 4);		//  2  6 10 14
+			break;						//  1  5  9 13
+		}								//  0  4  8 12
+
+		return pi;
+	}
 
 	/**
 	 * Resets the complete game to the beginning state
@@ -512,9 +515,6 @@ private:
 			return;
 		}
 
-		// Timing for blinking text
-		static float fBlinkTiming = 0;
-
 		// Offsets for the title graphics
 		// and the other texts
 		int nOffsetX = 2;
@@ -535,15 +535,15 @@ private:
 		wstring sSubtitle = L"30 Edition";
 		DrawString((int)(ScreenWidth() / 2 - sSubtitle.length() / 2), nOffsetSubtitleY, sSubtitle, FG_WHITE);
 
-		fBlinkTiming += fElapsedTime;
-		if (fBlinkTiming <= 1.0f) {
-			// Draw the text
-			wstring sBlinkText = L"Press Space to start";
-			DrawString((int)(ScreenWidth() / 2 - sBlinkText.length() / 2), nOffsetBlinkTextY, sBlinkText, FG_WHITE);
-		} else if (fBlinkTiming > 2.0f) {
-			// Reset timer
-			fBlinkTiming = 0.0f;
-		}
+		// Timing for blinking text
+		static float fBlinkTiming = 0;
+
+		fBlinkTiming += fElapsedTime * m_nBlinkAnimationSpeed;
+		int nAnimationIndex = ((int)fBlinkTiming) % (sizeof(m_nBlinkAnimation) / sizeof(m_nBlinkAnimation[0]));
+
+		// Draw the text
+		wstring sBlinkText = L"Press Space to start";
+		DrawString((int)(ScreenWidth() / 2 - sBlinkText.length() / 2), nOffsetBlinkTextY, sBlinkText, m_nBlinkAnimation[nAnimationIndex]);
 	}
 };
 
