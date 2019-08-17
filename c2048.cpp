@@ -45,9 +45,6 @@ bool c2048::OnUserDestroy()
 
 bool c2048::OnUserUpdate(float fElapsedTime)
 {
-	// First we fill the complete screen black
-	Fill(0, 0, ScreenWidth(), ScreenHeight(), PIXEL_SOLID, FG_BLACK);
-
 	// Run code depending on game state
 	switch (m_nGameState) {
 	case GAME_STATE_TITLE:
@@ -113,7 +110,7 @@ int c2048::GetCellIndex(int x, int y, ROTATION nRotation)
 /**
  * Draws a cell
  */
-void c2048::DrawCell(int nCellIndex)
+void c2048::DrawCell(int nCellIndex, short nChar)
 {
 	sCell oCell = m_aGrid[nCellIndex];
 
@@ -126,7 +123,7 @@ void c2048::DrawCell(int nCellIndex)
 	int nPosY = oCell.nPosY + (int)oCell.fAnimOffsetY;
 
 	// Just draw a colored rectangle
-	Fill(nPosX, nPosY, nPosX + m_nTileSize, nPosY + m_nTileSize, PIXEL_SOLID, nCellColor);
+	Fill(nPosX, nPosY, nPosX + m_nTileSize, nPosY + m_nTileSize, nChar, nCellColor);
 
 	// Draw value of cell (only if greater then 0)
 	if (oCell.nValue > 0) {
@@ -158,6 +155,7 @@ void c2048::ResetGameData(GAME_STATE state)
 			m_aGrid[nCellIndex].bNeedsAnimation = false;
 			m_aGrid[nCellIndex].fAnimOffsetX = 0.0f;
 			m_aGrid[nCellIndex].fAnimOffsetY = 0.0f;
+			m_aGrid[nCellIndex].bHasSpecialAnimation = false;
 		}
 	}
 
@@ -165,8 +163,8 @@ void c2048::ResetGameData(GAME_STATE state)
 	m_nGameState = state;
 
 	// Add 2 numbers in random cells
-	AddNewNumber();
-	AddNewNumber();
+	AddNewNumber(false);
+	AddNewNumber(false);
 }
 
 /**
@@ -192,17 +190,17 @@ vector<int> c2048::GetAvailableCells()
  * Adds a new number to the grid
  * 90% it should be a 2 and 10% it should be a 4
  */
-void c2048::AddNewNumber()
+void c2048::AddNewNumber(bool bAnimate)
 {
 	int nCellValue = (rand() < RAND_MAX * 0.9f) ? 2 : 4;
-	AddNewNumber(nCellValue);
+	AddNewNumber(nCellValue, bAnimate);
 }
 
 /**
  * Adds the number specified in nValue to a random location to the grid.
  * But only to available spots.
  */
-void c2048::AddNewNumber(int nValue)
+void c2048::AddNewNumber(int nValue, bool bAnimate)
 {
 	vector<int> aAvailableCells = GetAvailableCells();
 
@@ -214,16 +212,28 @@ void c2048::AddNewNumber(int nValue)
 
 	m_aGrid[nCellIndex].nValue = nValue;
 	m_aGrid[nCellIndex].nDestinationCellIndex = -1;
+	m_aGrid[nCellIndex].bHasSpecialAnimation = bAnimate;
+
+	if (bAnimate) {
+		m_nGameState = GAME_STATE_ANIMATE;
+		m_fAnimationTime = 0;
+	}
 }
 
 /**
  * Adds the number to a specific cell
  */
-void c2048::AddNewNumber(int nValue, int x, int y)
+void c2048::AddNewNumber(int nValue, int x, int y, bool bAnimate)
 {
 	int nCellIndex = GetCellIndex(x, y, LEFT);
 	m_aGrid[nCellIndex].nValue = nValue;
 	m_aGrid[nCellIndex].nDestinationCellIndex = -1;
+	m_aGrid[nCellIndex].bHasSpecialAnimation = bAnimate;
+
+	if (bAnimate) {
+		m_nGameState = GAME_STATE_ANIMATE;
+		m_fAnimationTime = 0;
+	}
 }
 
 /**
@@ -512,6 +522,9 @@ void c2048::GameStateTitle(float fElapsedTime)
 		return;
 	}
 
+	// First we fill the complete screen black
+	Fill(0, 0, ScreenWidth(), ScreenHeight(), PIXEL_SOLID, FG_BLACK);
+
 	// Offsets for the title graphics
 	// and the other texts
 	int nOffsetX = 2;
@@ -532,11 +545,8 @@ void c2048::GameStateTitle(float fElapsedTime)
 	wstring sSubtitle = L"30 Edition";
 	DrawString((int)(ScreenWidth() / 2 - sSubtitle.length() / 2), nOffsetSubtitleY, sSubtitle, FG_WHITE);
 
-	// Timing for blinking text
-	static float fBlinkTiming = 0;
-
-	fBlinkTiming += fElapsedTime * m_nBlinkAnimationSpeed;
-	int nAnimationIndex = ((int)fBlinkTiming) % m_nBlinkAnimation.size();
+	m_fAnimationTime += fElapsedTime * m_nBlinkAnimationSpeed;
+	int nAnimationIndex = ((int)m_fAnimationTime) % m_nBlinkAnimation.size();
 
 	// Draw the text
 	wstring sBlinkText = L"Press Space to start";
@@ -551,6 +561,7 @@ void c2048::GameStateTitle(float fElapsedTime)
 void c2048::GameStateAnimate(float fElapsedTime)
 {
 	bool bNeedsMoreAnimation = false;
+	bool bNeedNewNumber = true;
 
 	DrawGameField();
 
@@ -558,7 +569,7 @@ void c2048::GameStateAnimate(float fElapsedTime)
 		for (int y = 0; y < 4; y++) {
 			int nCurrentCellIndex = GetCellIndex(x, y, m_nAnimationDirection);
 
-			if (m_aGrid[nCurrentCellIndex].bNeedsAnimation == false && m_aGrid[nCurrentCellIndex].nValue > 0) {
+			if (m_aGrid[nCurrentCellIndex].bNeedsAnimation == false && m_aGrid[nCurrentCellIndex].nValue > 0 && !m_aGrid[nCurrentCellIndex].bHasSpecialAnimation) {
 				// Cell needs no animation but has a value
 				DrawCell(nCurrentCellIndex);
 			}
@@ -605,14 +616,31 @@ void c2048::GameStateAnimate(float fElapsedTime)
 					m_aGrid[nCurrentCellIndex].bNeedsAnimation = false;
 				}
 			}
+			else if (m_aGrid[nCurrentCellIndex].bHasSpecialAnimation) {
+				m_fAnimationTime += fElapsedTime * m_nNewTileAnimationSpeed;
+				int nAnimationIndex = ((int)m_fAnimationTime) % m_nNewTileAnimation.size();
+
+				DrawCell(nCurrentCellIndex, m_nNewTileAnimation[nAnimationIndex]);
+
+				if (nAnimationIndex == m_nNewTileAnimation.size() - 1) {
+					bNeedsMoreAnimation = false;
+					m_aGrid[nCurrentCellIndex].bHasSpecialAnimation = false;
+				}
+				else {
+					bNeedsMoreAnimation = true;
+				}
+
+				bNeedNewNumber = false;
+			}
 		}
 	}
 
-	if (!bNeedsMoreAnimation) {
-		m_nGameState = GAME_STATE_START;
-		m_bHasMoved = false;
-
+	if (!bNeedsMoreAnimation && bNeedNewNumber) {
 		CalculateCellMovement(m_nAnimationDirection);
 		AddNewNumber();
+	} 
+	else if (!bNeedsMoreAnimation) {
+		m_nGameState = GAME_STATE_START;
+		m_bHasMoved = false;
 	}
 }

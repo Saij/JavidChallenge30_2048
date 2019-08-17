@@ -28,6 +28,7 @@ struct sCell {
 	bool bNeedsAnimation;
 	float fAnimOffsetX;
 	float fAnimOffsetY;
+	bool bHasSpecialAnimation;
 };
 
 class c2048 : public olcConsoleGameEngineOOP
@@ -44,8 +45,14 @@ private:
 
 	wstring m_sTitleGraphic = L"";
 	int m_nTitleGraphicWidth = 0;
+	
 	vector<short> m_nBlinkAnimation{ FG_WHITE, FG_WHITE, FG_WHITE, FG_GREY, FG_DARK_GREY, FG_BLACK, FG_BLACK, FG_BLACK, FG_DARK_GREY, FG_GREY };
+	vector<short> m_nNewTileAnimation{ L' ', PIXEL_QUARTER, PIXEL_HALF, PIXEL_THREEQUARTERS, PIXEL_SOLID };
+	
 	int m_nBlinkAnimationSpeed = 10;
+	int m_nNewTileAnimationSpeed = 10;
+
+	float m_fAnimationTime = 0;
 
 	int m_nTileSize = 5;
 	int m_nFieldSize = 0;
@@ -61,13 +68,13 @@ protected:
 
 private:
 	int GetCellIndex(int x, int y, ROTATION nRotation = LEFT);
-	void DrawCell(int nCellIndex);
+	void DrawCell(int nCellIndex, short nChar = PIXEL_SOLID);
 	void DrawGameField();
 	void ResetGameData(GAME_STATE state = GAME_STATE_TITLE);
 	vector<int> GetAvailableCells();
-	void AddNewNumber();
-	void AddNewNumber(int nValue);
-	void AddNewNumber(int nValue, int x, int y);
+	void AddNewNumber(bool bAnimate = true);
+	void AddNewNumber(int nValue, bool bAnimate = true);
+	void AddNewNumber(int nValue, int x, int y, bool bAnimate = true);
 	void GetCellColor(int nValue, short& cellColor, short& textColor);
 	void GameStateStart(float fElapsedTime);
 	void GameStateTitle(float fElapsedTime);

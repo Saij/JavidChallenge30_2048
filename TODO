@@ -1,0 +1,2 @@
+- Add explosion animation
+- Fix bug with animation of tiles (check positions on >= basis instead of ==)
