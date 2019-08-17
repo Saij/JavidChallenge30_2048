@@ -60,6 +60,10 @@ bool c2048::OnUserUpdate(float fElapsedTime)
 
 	case GAME_STATE_EXIT:
 		return false;
+
+	case GAME_STATE_ANIMATE:
+		GameStateAnimate(fElapsedTime);
+		break;
 	}
 
 	return true;
@@ -363,7 +367,8 @@ void c2048::CalculateCellMovement(ROTATION dir)
 
 			if (m_aGrid[nTargetCellIndex].nValue == m_aGrid[nCurrentCellIndex].nValue)
 				// Combine those two cells
-				m_aGrid[nTargetCellIndex].nValue += m_aGrid[nCurrentCellIndex].nValue;
+				m_aGrid[nTargetCellIndex].
+				nValue += m_aGrid[nCurrentCellIndex].nValue;
 			else
 				// Move the cell
 				m_aGrid[nTargetCellIndex].nValue = m_aGrid[nCurrentCellIndex].nValue;
@@ -390,31 +395,51 @@ void c2048::GameStateStart(float fElapsedTime)
 		return;
 	}
 
-	bool bHasMoved = false;
-
 	if (GetKey(VK_RIGHT).bReleased) {
-		bHasMoved = MoveCells(RIGHT);
+		m_nAnimationDirection = RIGHT;
+		m_bHasMoved = MoveCells(RIGHT);
 	}
 	else if (GetKey(VK_LEFT).bReleased) {
-		bHasMoved = MoveCells(LEFT);
+		m_nAnimationDirection = LEFT;
+		m_bHasMoved = MoveCells(LEFT);
 	}
 	else if (GetKey(VK_UP).bReleased) {
-		bHasMoved = MoveCells(TOP);
+		m_nAnimationDirection = TOP;
+		m_bHasMoved = MoveCells(TOP);
 	}
 	else if (GetKey(VK_DOWN).bReleased) {
-		bHasMoved = MoveCells(DOWN);
+		m_nAnimationDirection = DOWN;
+		m_bHasMoved = MoveCells(DOWN);
 	}
 
-	// Add a new number if something has been moved
-	if (bHasMoved)
-		AddNewNumber();
+	// If something has moved start the animation
+	if (m_bHasMoved) {
+		m_nGameState = GAME_STATE_ANIMATE;
+		return;
+	}
 
+	DrawGameField();
+	for (int x = 0; x < 4; x++) {
+		for (int y = 0; y < 4; y++) {
+			DrawCell(x, y);
+		}
+	}
+}
+
+/**
+ * Draws the game field
+ */
+void c2048::DrawGameField()
+{
 	// Draw the field
 	Fill(0, 0, 30, m_nFieldSize, PIXEL_SOLID, FG_DARK_GREY);
 
 	for (int x = 0; x < 4; x++) {
 		for (int y = 0; y < 4; y++) {
-			DrawCell(x, y);
+			int nPosX = 1 + m_nFieldOffsetX + (x * (m_nTileSize + 1));
+			int nPosY = 1 + y * (m_nTileSize + 1);
+
+			Fill(nPosX, nPosY, nPosX + m_nTileSize, nPosY + m_nTileSize, PIXEL_SOLID, FG_BLACK);
 		}
 	}
 
@@ -425,6 +450,9 @@ void c2048::GameStateStart(float fElapsedTime)
 
 	// Print exit help
 	DrawString(1, m_nFieldSize + 3, L"Press ESC to exit", FG_WHITE);
+
+	// Print restart help
+	DrawString(1, m_nFieldSize + 4, L"Press R to restart", FG_WHITE);
 }
 
 /**
@@ -469,4 +497,14 @@ void c2048::GameStateTitle(float fElapsedTime)
 	// Draw the text
 	wstring sBlinkText = L"Press Space to start";
 	DrawString((int)(ScreenWidth() / 2 - sBlinkText.length() / 2), nOffsetBlinkTextY, sBlinkText, m_nBlinkAnimation[nAnimationIndex]);
+}
+
+/**
+ * Handle for the game state GAME_STATE_ANIMATE
+ *
+ * Animates the moving tiles
+ */
+void c2048::GameStateAnimate(float fElapsedTime)
+{
+	DrawGameField();
 }

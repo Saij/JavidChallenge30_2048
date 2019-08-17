@@ -7,9 +7,10 @@ using namespace std;
 #include "olcConsoleGameEngineOOP.h"
 
 enum GAME_STATE {
-	GAME_STATE_TITLE = 0x0001,
-	GAME_STATE_START = 0x0002,
-	GAME_STATE_EXIT = 0x0003
+	GAME_STATE_TITLE	= 0x01,
+	GAME_STATE_START	= 0x02,
+	GAME_STATE_EXIT		= 0x03,
+	GAME_STATE_ANIMATE	= 0x04
 };
 
 enum ROTATION {
@@ -48,6 +49,8 @@ private:
 	int m_nFieldSize = 0;
 	int m_nFieldOffsetX = 0;
 
+	bool m_bHasMoved = false;
+	ROTATION m_nAnimationDirection;
 
 protected:
 	virtual bool OnUserCreate();
@@ -57,6 +60,7 @@ protected:
 private:
 	int GetCellIndex(int x, int y, ROTATION nRotation = LEFT);
 	void DrawCell(int x, int y);
+	void DrawGameField();
 	void ResetGameData(GAME_STATE state = GAME_STATE_TITLE);
 	vector<int> GetAvailableCells();
 	void AddNewNumber();
@@ -64,6 +68,7 @@ private:
 	void GetCellColor(int nValue, short& fgColor, short& bgColor, short& textColor);
 	void GameStateStart(float fElapsedTime);
 	void GameStateTitle(float fElapsedTime);
+	void GameStateAnimate(float fElapsedTime);
 	bool MoveCells(ROTATION dir);
 	void CalculateCellMovement(ROTATION dir);
 };
