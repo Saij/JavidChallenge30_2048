@@ -94,14 +94,14 @@ int c2048::GetCellIndex(int x, int y, ROTATION nRotation)
 									// 15 14 13 12
 
 	case TOP:               		//  0  4  8 12
-		nReturn = x * 4 + x;		//  1  5  9 13
+		nReturn = x * 4 + y;		//  1  5  9 13
 		break;						//  2  6 10 14
 									//  3  7 11 15
 
-	case DOWN:               		//  3  7 11 15
-		nReturn = x * 4 + (3 - y);	//  2  6 10 14
-		break;						//  1  5  9 13
-	}								//  0  4  8 12
+	case DOWN:               		// 12  8  4  0
+		nReturn = (3 - x) * 4 + y;	// 13  9  5  1
+		break;						// 14 10  6  2
+	}								// 15 11  7  3
 
 	return nReturn;
 }
@@ -135,7 +135,7 @@ void c2048::DrawCell(int x, int y)
 /**
  * Resets the complete game to the beginning state
  */
-void c2048::ResetGameData()
+void c2048::ResetGameData(GAME_STATE state)
 {
 	// Seed random number generator
 	srand(clock());
@@ -149,11 +149,12 @@ void c2048::ResetGameData()
 			m_aGrid[nCellIndex].nPosX = 1 + m_nFieldOffsetX + (x * (m_nTileSize + 1));
 			m_aGrid[nCellIndex].nPosY = 1 + y * (m_nTileSize + 1);
 			m_aGrid[nCellIndex].nDestinationCellIndex = -1;
+			m_aGrid[nCellIndex].nNewValue = 0;
 		}
 	}
 
 	m_nScore = 0;
-	m_nGameState = GAME_STATE_TITLE;
+	m_nGameState = state;
 
 	// Add 2 numbers in random cells
 	AddNewNumber();
@@ -204,6 +205,7 @@ void c2048::AddNewNumber(int nValue)
 	int nCellIndex = aAvailableCells[rand() % aAvailableCells.size()];
 
 	m_aGrid[nCellIndex].nValue = nValue;
+	m_aGrid[nCellIndex].nDestinationCellIndex = -1;
 }
 
 /**
@@ -284,7 +286,7 @@ void c2048::GetCellColor(int nValue, short& fgColor, short& bgColor, short& text
 	default:
 		fgColor = FG_BLACK;
 		bgColor = BG_BLACK;
-		textColor = FG_BLACK;
+		textColor = FG_WHITE;
 		break;
 	}
 }
@@ -313,18 +315,26 @@ bool c2048::MoveCells(ROTATION dir)
 			// Check all previous cells
 			bool bCellFinished = false;
 			for (int prevX = 0; prevX < x && !bCellFinished; prevX++) {
-
-				// Previous cell can't be target
-				if (!bCellCanBeTarget[prevX])
-					continue;
-				
 				int nPreviousCellIndex = GetCellIndex(prevX, y, dir);
 
+				// Previous cell can't be target
+				if (!bCellCanBeTarget[prevX] && m_aGrid[nPreviousCellIndex].nNewValue != m_aGrid[nCurrentCellIndex].nValue)
+					continue;
+
 				bCellCanBeTarget[prevX] = false;
-				if (m_aGrid[nPreviousCellIndex].nValue == 0 || m_aGrid[nPreviousCellIndex].nValue == m_aGrid[nCurrentCellIndex].nValue) {
-					// Target cell is empty
-					// or has the same value as current cell
+
+				// Conditions we can move to this cell
+				// 1. Target cell is empty (has no value)
+				// 2. Target cell has same value as current cell (so we merge them)
+				// 3. Target cell will be moved so it would be empty
+				// 4. Target cell will have a new value which is the same as the current cell
+				if (m_aGrid[nPreviousCellIndex].nValue == 0 || 
+					m_aGrid[nPreviousCellIndex].nValue == m_aGrid[nCurrentCellIndex].nValue || 
+					m_aGrid[nPreviousCellIndex].nDestinationCellIndex != -1 ||
+					m_aGrid[nPreviousCellIndex].nNewValue == m_aGrid[nCurrentCellIndex].nValue
+				) {
 					m_aGrid[nCurrentCellIndex].nDestinationCellIndex = nPreviousCellIndex;
+					m_aGrid[nPreviousCellIndex].nNewValue = m_aGrid[nCurrentCellIndex].nValue;
 					bHasMoved = true;
 					bCellFinished = true;
 				}
@@ -332,17 +342,20 @@ bool c2048::MoveCells(ROTATION dir)
 		}
 	}
 
+	if (bHasMoved)
+		CalculateCellMovement(dir);
+
 	return bHasMoved;
 }
 
 /**
  * Executes the precalculated cell movement
  */
-void c2048::CalculateCellMovement()
+void c2048::CalculateCellMovement(ROTATION dir)
 {
 	for (int x = 0; x < 4; x++) {
 		for (int y = 0; y < 4; y++) {
-			int nCurrentCellIndex = GetCellIndex(x, y);
+			int nCurrentCellIndex = GetCellIndex(x, y, dir);
 			int nTargetCellIndex = m_aGrid[nCurrentCellIndex].nDestinationCellIndex;
 			
 			if (nTargetCellIndex == -1)
@@ -357,6 +370,7 @@ void c2048::CalculateCellMovement()
 
 			m_aGrid[nCurrentCellIndex].nDestinationCellIndex = -1;
 			m_aGrid[nCurrentCellIndex].nValue = 0;
+			m_aGrid[nTargetCellIndex].nNewValue = 0;
 		}
 	}
 }
@@ -368,6 +382,11 @@ void c2048::GameStateStart(float fElapsedTime)
 {
 	if (GetKey(VK_ESCAPE).bReleased) {
 		m_nGameState = GAME_STATE_EXIT;
+		return;
+	}
+
+	if (GetKey(L'R').bReleased) {
+		ResetGameData(GAME_STATE_START);
 		return;
 	}
 
@@ -385,8 +404,6 @@ void c2048::GameStateStart(float fElapsedTime)
 	else if (GetKey(VK_DOWN).bReleased) {
 		bHasMoved = MoveCells(DOWN);
 	}
-
-	CalculateCellMovement();
 
 	// Add a new number if something has been moved
 	if (bHasMoved)

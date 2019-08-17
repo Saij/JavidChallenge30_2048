@@ -24,6 +24,7 @@ struct sCell {
 	int nPosX;
 	int nPosY;
 	int nDestinationCellIndex;
+	int nNewValue;
 };
 
 class c2048 : public olcConsoleGameEngineOOP
@@ -56,7 +57,7 @@ protected:
 private:
 	int GetCellIndex(int x, int y, ROTATION nRotation = LEFT);
 	void DrawCell(int x, int y);
-	void ResetGameData();
+	void ResetGameData(GAME_STATE state = GAME_STATE_TITLE);
 	vector<int> GetAvailableCells();
 	void AddNewNumber();
 	void AddNewNumber(int nValue);
@@ -64,5 +65,5 @@ private:
 	void GameStateStart(float fElapsedTime);
 	void GameStateTitle(float fElapsedTime);
 	bool MoveCells(ROTATION dir);
-	void CalculateCellMovement();
+	void CalculateCellMovement(ROTATION dir);
 };
