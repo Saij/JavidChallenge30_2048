@@ -134,14 +134,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="c2048.cpp" />
     <ClCompile Include="JavidChallenge30_2048.cpp" />
+    <ClCompile Include="olcConsoleGameEngineOOP.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="LICENSE" />
     <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="olcConsoleGameEngine.h" />
+    <ClInclude Include="c2048.h" />
+    <ClInclude Include="olcConsoleGameEngineOOP.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

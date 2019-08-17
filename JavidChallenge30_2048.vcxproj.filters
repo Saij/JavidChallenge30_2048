@@ -18,13 +18,22 @@
     <ClCompile Include="JavidChallenge30_2048.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="olcConsoleGameEngineOOP.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="c2048.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="LICENSE" />
     <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="olcConsoleGameEngine.h">
+    <ClInclude Include="olcConsoleGameEngineOOP.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="c2048.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
