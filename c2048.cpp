@@ -117,17 +117,16 @@ void c2048::DrawCell(int nCellIndex)
 {
 	sCell oCell = m_aGrid[nCellIndex];
 
-	short nFgColor;
-	short nBgColor;
+	short nCellColor;
 	short nTextColor;
 
-	GetCellColor(oCell.nValue, nFgColor, nBgColor, nTextColor);
+	GetCellColor(oCell.nValue, nCellColor, nTextColor);
 
 	int nPosX = oCell.nPosX + (int)oCell.fAnimOffsetX;
 	int nPosY = oCell.nPosY + (int)oCell.fAnimOffsetY;
 
 	// Just draw a colored rectangle
-	Fill(nPosX, nPosY, nPosX + m_nTileSize, nPosY + m_nTileSize, PIXEL_SOLID, nFgColor);
+	Fill(nPosX, nPosY, nPosX + m_nTileSize, nPosY + m_nTileSize, PIXEL_SOLID, nCellColor);
 
 	// Draw value of cell (only if greater then 0)
 	if (oCell.nValue > 0) {
@@ -135,7 +134,7 @@ void c2048::DrawCell(int nCellIndex)
 		int nTextX = (int)(nPosX + (m_nTileSize / 2) - sCellText.length() / 2);
 		int nTextY = (int)(nPosY + m_nTileSize / 2);
 
-		DrawString(nTextX, nTextY, sCellText, nTextColor | nBgColor);
+		DrawString(nTextX, nTextY, sCellText, nTextColor);
 	}
 }
 
@@ -156,7 +155,6 @@ void c2048::ResetGameData(GAME_STATE state)
 			m_aGrid[nCellIndex].nPosX = 1 + m_nFieldOffsetX + (x * (m_nTileSize + 1));
 			m_aGrid[nCellIndex].nPosY = 1 + y * (m_nTileSize + 1);
 			m_aGrid[nCellIndex].nDestinationCellIndex = -1;
-			m_aGrid[nCellIndex].nNewValue = 0;
 			m_aGrid[nCellIndex].bNeedsAnimation = false;
 			m_aGrid[nCellIndex].fAnimOffsetX = 0.0f;
 			m_aGrid[nCellIndex].fAnimOffsetY = 0.0f;
@@ -167,20 +165,12 @@ void c2048::ResetGameData(GAME_STATE state)
 	m_nGameState = state;
 
 	// Add 2 numbers in random cells
-	AddNewNumber();
-	AddNewNumber();
+	//AddNewNumber();
+	//AddNewNumber();
 
-	/*AddNewNumber(2, 0, 0);
-	AddNewNumber(4, 1, 0);
-	AddNewNumber(8, 2, 0);
 	AddNewNumber(16, 3, 0);
-	AddNewNumber(32, 0, 1);
-	AddNewNumber(64, 1, 1);
-	AddNewNumber(128, 2, 1);
-	AddNewNumber(256, 3, 1);
-	AddNewNumber(512, 0, 2);
-	AddNewNumber(1024, 1, 2);
-	AddNewNumber(2048, 2, 2);*/
+	AddNewNumber(8, 3, 1);
+	AddNewNumber(4, 3, 2);
 }
 
 /**
@@ -235,7 +225,7 @@ void c2048::AddNewNumber(int nValue)
  */
 void c2048::AddNewNumber(int nValue, int x, int y)
 {
-	int nCellIndex = GetCellIndex(x, y);
+	int nCellIndex = GetCellIndex(x, y, LEFT);
 	m_aGrid[nCellIndex].nValue = nValue;
 	m_aGrid[nCellIndex].nDestinationCellIndex = -1;
 }
@@ -246,79 +236,67 @@ void c2048::AddNewNumber(int nValue, int x, int y)
  *
  * Hardcoded because we only support till 2048
  */
-void c2048::GetCellColor(int nValue, short& fgColor, short& bgColor, short& textColor)
+void c2048::GetCellColor(int nValue, short& cellColor, short& textColor)
 {
 	switch (nValue) {
 	case 2:
-		fgColor = FG_YELLOW;
-		bgColor = BG_YELLOW;
-		textColor = FG_BLACK;
+		cellColor = FG_YELLOW;
+		textColor = FG_BLACK | BG_YELLOW;
 		break;
 
 	case 4:
-		fgColor = FG_DARK_YELLOW;
-		bgColor = BG_DARK_YELLOW;
-		textColor = FG_BLACK;
+		cellColor = FG_DARK_YELLOW;
+		textColor = FG_BLACK | BG_DARK_YELLOW;
 		break;
 
 	case 8:
-		fgColor = FG_RED;
-		bgColor = BG_RED;
-		textColor = FG_WHITE;
+		cellColor = FG_RED;
+		textColor = FG_BLACK | BG_RED;
 		break;
 
 	case 16:
-		fgColor = FG_DARK_RED;
-		bgColor = BG_DARK_RED;
-		textColor = FG_WHITE;
+		cellColor = FG_DARK_RED;
+		textColor = FG_BLACK | BG_DARK_RED;
 		break;
 
 	case 32:
-		fgColor = FG_GREEN;
-		bgColor = BG_GREEN;
-		textColor = FG_BLACK;
+		cellColor = FG_BLUE;
+		textColor = FG_BLACK | BG_BLUE;
 		break;
 
 	case 64:
-		fgColor = FG_DARK_GREEN;
-		bgColor = BG_DARK_GREEN;
-		textColor = FG_WHITE;
+		cellColor = FG_DARK_BLUE;
+		textColor = FG_BLACK | BG_DARK_BLUE;
 		break;
 
 	case 128:
-		fgColor = FG_BLUE;
-		bgColor = BG_BLUE;
-		textColor = FG_WHITE;
+		cellColor = FG_GREEN;
+		textColor = FG_BLACK | BG_GREEN;
 		break;
 
 	case 256:
-		fgColor = FG_DARK_BLUE;
-		bgColor = BG_DARK_BLUE;
-		textColor = FG_WHITE;
+		cellColor = FG_DARK_GREEN;
+		textColor = FG_BLACK | BG_DARK_GREEN;
 		break;
 
 	case 512:
-		fgColor = FG_CYAN;
-		bgColor = BG_CYAN;
-		textColor = FG_BLACK;
+		cellColor = FG_CYAN;
+		textColor = FG_BLACK | BG_CYAN;
 		break;
 
 	case 1024:
-		fgColor = FG_DARK_CYAN;
-		bgColor = BG_DARK_CYAN;
-		textColor = FG_WHITE;
+		cellColor = FG_DARK_CYAN;
+		textColor = FG_BLACK | BG_DARK_CYAN;
 		break;
 
 	case 2048:
-		fgColor = FG_WHITE;
-		bgColor = BG_WHITE;
-		textColor = FG_BLACK;
+		cellColor = FG_WHITE;
+		textColor = FG_BLACK | BG_WHITE;
 		break;
 
 	default:
-		fgColor = FG_BLACK;
-		bgColor = BG_BLACK;
-		textColor = FG_WHITE;
+		cellColor = FG_BLACK;
+		textColor = FG_WHITE | BG_BLACK;
 		break;
 	}
 }
@@ -334,60 +312,87 @@ bool c2048::MoveCells(ROTATION dir)
 
 	// For each row (if we think of a rotated grid)
 	for (int y = 0; y < 4; y++) {
-		bool bCellCanBeTarget[4] = { true, true, true, true };
-		bool bCellHasMerged[4] = { false,false,false,false };
+		int nLastCellMovedIndex = -1;
+		int nLastCellValue = -1;
+		int nLastReceiverCellIndex = -1;
+		int nStartPrevX = 0;
+		bool bLastCellMerged = false;
 
-		// Ignore the first cell as there is nothing it can do
 		for (int x = 0; x < 4; x++) {
 			int nCurrentCellIndex = GetCellIndex(x, y, dir);
+
+			// If first cell just safe the values and continue
+			if (x == 0) {
+				nLastCellMovedIndex = -1;
+				nLastCellValue = m_aGrid[nCurrentCellIndex].nValue;
+				bLastCellMerged = false;
+				continue;
+			}
 
 			// Cell is empty - so nothing todo
 			if (m_aGrid[nCurrentCellIndex].nValue == 0)
 				continue;
 
-			if (m_aGrid[nCurrentCellIndex].nValue > 0 && x == 0) {
-				// First cell need no movement but some states
-				bCellCanBeTarget[0] = false;
-				m_aGrid[nCurrentCellIndex].nNewValue = m_aGrid[nCurrentCellIndex].nValue;
-				continue;
-			}
-
-			// Check all previous cells
+			// Iterate over all the previous cells to check if we find a space
+			// or a way to merge
 			bool bCellFinished = false;
-			for (int prevX = 0; prevX < x && !bCellFinished; prevX++) {
-				// Cell was already in a merge process so it can't be targeted again
-				if (bCellHasMerged[prevX])
-					continue;
-
+			for (int prevX = nStartPrevX; prevX < x && !bCellFinished; prevX++) {
 				int nPreviousCellIndex = GetCellIndex(prevX, y, dir);
 
-				// Previous cell can't be target
-				if (!bCellCanBeTarget[prevX] && m_aGrid[nPreviousCellIndex].nNewValue != m_aGrid[nCurrentCellIndex].nValue)
-					continue;
-
-
-				bCellCanBeTarget[prevX] = false;
-
-				// Conditions we can move to this cell
-				// 1. Target cell is empty (has no value)
-				// 2. Target cell has same value as current cell (so we merge them)
-				// 3. Target cell will be moved so it would be empty
-				// 4. Target cell will have a new value which is the same as the current cell
-				if (m_aGrid[nPreviousCellIndex].nValue == 0 || 
-					m_aGrid[nPreviousCellIndex].nValue == m_aGrid[nCurrentCellIndex].nValue || 
-					m_aGrid[nPreviousCellIndex].nDestinationCellIndex != -1 ||
-					m_aGrid[nPreviousCellIndex].nNewValue == m_aGrid[nCurrentCellIndex].nValue
-				) {
-					bCellHasMerged[prevX] = (m_aGrid[nPreviousCellIndex].nNewValue == m_aGrid[nCurrentCellIndex].nValue) || (m_aGrid[nPreviousCellIndex].nValue == m_aGrid[nCurrentCellIndex].nValue);
-					
+				if (m_aGrid[nCurrentCellIndex].nValue == nLastCellValue && !bLastCellMerged) {
+					// Last cell value is the same as our current cell
+					// So we can merge
 					m_aGrid[nCurrentCellIndex].nDestinationCellIndex = nPreviousCellIndex;
 					m_aGrid[nCurrentCellIndex].bNeedsAnimation = true;
 
-					m_aGrid[nPreviousCellIndex].nNewValue = m_aGrid[nCurrentCellIndex].nValue;
-					
+					nLastReceiverCellIndex = nPreviousCellIndex;
+
 					bHasMoved = true;
 					bCellFinished = true;
+
+					nStartPrevX = prevX + 1;
+					nLastCellValue = 0;
+					bLastCellMerged = true;
 				}
+				else if (m_aGrid[nPreviousCellIndex].nValue == 0 && (nLastReceiverCellIndex != nPreviousCellIndex || nLastCellValue == 0)) {
+					// Cell is empty so we use it directly
+					m_aGrid[nCurrentCellIndex].nDestinationCellIndex = nPreviousCellIndex;
+					m_aGrid[nCurrentCellIndex].bNeedsAnimation = true;
+
+					nLastReceiverCellIndex = nPreviousCellIndex;
+
+					bHasMoved = true;
+					bCellFinished = true;
+
+					nStartPrevX = prevX;
+					nLastCellValue = m_aGrid[nCurrentCellIndex].nValue;
+					bLastCellMerged = false;
+				}
+				else if (nLastCellMovedIndex == nPreviousCellIndex) {
+					// Cell has already been moved so it is considered empty
+					m_aGrid[nCurrentCellIndex].nDestinationCellIndex = nPreviousCellIndex;
+					m_aGrid[nCurrentCellIndex].bNeedsAnimation = true;
+
+					nLastReceiverCellIndex = nPreviousCellIndex;
+
+					bHasMoved = true;
+					bCellFinished = true;
+
+					nStartPrevX = prevX;
+					nLastCellValue = m_aGrid[nCurrentCellIndex].nValue;
+					bLastCellMerged = false;
+				}
+			}
+
+			if (!bCellFinished) {
+				// Cell had not been moved
+				nLastCellValue = m_aGrid[nCurrentCellIndex].nValue;
+				bLastCellMerged = false;
+				nLastReceiverCellIndex = nCurrentCellIndex;
+				nStartPrevX = x;
+			}
+			else {
+				nLastCellMovedIndex = nCurrentCellIndex;
 			}
 		}
 	}
@@ -421,8 +426,6 @@ void c2048::CalculateCellMovement(ROTATION dir)
 			m_aGrid[nCurrentCellIndex].bNeedsAnimation = false;
 			m_aGrid[nCurrentCellIndex].fAnimOffsetX = 0.0f;
 			m_aGrid[nCurrentCellIndex].fAnimOffsetY = 0.0f;
-
-			m_aGrid[nTargetCellIndex].nNewValue = 0;
 		}
 	}
 }

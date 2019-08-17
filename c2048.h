@@ -25,7 +25,6 @@ struct sCell {
 	int nPosX;
 	int nPosY;
 	int nDestinationCellIndex;
-	int nNewValue;
 	bool bNeedsAnimation;
 	float fAnimOffsetX;
 	float fAnimOffsetY;
@@ -69,7 +68,7 @@ private:
 	void AddNewNumber();
 	void AddNewNumber(int nValue);
 	void AddNewNumber(int nValue, int x, int y);
-	void GetCellColor(int nValue, short& fgColor, short& bgColor, short& textColor);
+	void GetCellColor(int nValue, short& cellColor, short& textColor);
 	void GameStateStart(float fElapsedTime);
 	void GameStateTitle(float fElapsedTime);
 	void GameStateAnimate(float fElapsedTime);
