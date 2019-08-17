@@ -26,6 +26,9 @@ struct sCell {
 	int nPosY;
 	int nDestinationCellIndex;
 	int nNewValue;
+	bool bNeedsAnimation;
+	float fAnimOffsetX;
+	float fAnimOffsetY;
 };
 
 class c2048 : public olcConsoleGameEngineOOP
@@ -59,12 +62,13 @@ protected:
 
 private:
 	int GetCellIndex(int x, int y, ROTATION nRotation = LEFT);
-	void DrawCell(int x, int y);
+	void DrawCell(int nCellIndex);
 	void DrawGameField();
 	void ResetGameData(GAME_STATE state = GAME_STATE_TITLE);
 	vector<int> GetAvailableCells();
 	void AddNewNumber();
 	void AddNewNumber(int nValue);
+	void AddNewNumber(int nValue, int x, int y);
 	void GetCellColor(int nValue, short& fgColor, short& bgColor, short& textColor);
 	void GameStateStart(float fElapsedTime);
 	void GameStateTitle(float fElapsedTime);

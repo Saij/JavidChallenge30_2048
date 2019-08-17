@@ -113,9 +113,9 @@ int c2048::GetCellIndex(int x, int y, ROTATION nRotation)
 /**
  * Draws a cell
  */
-void c2048::DrawCell(int x, int y)
+void c2048::DrawCell(int nCellIndex)
 {
-	sCell oCell = m_aGrid[GetCellIndex(x, y)];
+	sCell oCell = m_aGrid[nCellIndex];
 
 	short nFgColor;
 	short nBgColor;
@@ -123,14 +123,17 @@ void c2048::DrawCell(int x, int y)
 
 	GetCellColor(oCell.nValue, nFgColor, nBgColor, nTextColor);
 
+	int nPosX = oCell.nPosX + (int)oCell.fAnimOffsetX;
+	int nPosY = oCell.nPosY + (int)oCell.fAnimOffsetY;
+
 	// Just draw a colored rectangle
-	Fill(oCell.nPosX, oCell.nPosY, oCell.nPosX + m_nTileSize, oCell.nPosY + m_nTileSize, PIXEL_SOLID, nFgColor);
+	Fill(nPosX, nPosY, nPosX + m_nTileSize, nPosY + m_nTileSize, PIXEL_SOLID, nFgColor);
 
 	// Draw value of cell (only if greater then 0)
 	if (oCell.nValue > 0) {
 		wstring sCellText = to_wstring(oCell.nValue * (m_nNumberSystem / 2));
-		int nTextX = (int)(oCell.nPosX + (m_nTileSize / 2) - sCellText.length() / 2);
-		int nTextY = (int)(oCell.nPosY + m_nTileSize / 2);
+		int nTextX = (int)(nPosX + (m_nTileSize / 2) - sCellText.length() / 2);
+		int nTextY = (int)(nPosY + m_nTileSize / 2);
 
 		DrawString(nTextX, nTextY, sCellText, nTextColor | nBgColor);
 	}
@@ -154,6 +157,9 @@ void c2048::ResetGameData(GAME_STATE state)
 			m_aGrid[nCellIndex].nPosY = 1 + y * (m_nTileSize + 1);
 			m_aGrid[nCellIndex].nDestinationCellIndex = -1;
 			m_aGrid[nCellIndex].nNewValue = 0;
+			m_aGrid[nCellIndex].bNeedsAnimation = false;
+			m_aGrid[nCellIndex].fAnimOffsetX = 0.0f;
+			m_aGrid[nCellIndex].fAnimOffsetY = 0.0f;
 		}
 	}
 
@@ -163,6 +169,18 @@ void c2048::ResetGameData(GAME_STATE state)
 	// Add 2 numbers in random cells
 	AddNewNumber();
 	AddNewNumber();
+
+	/*AddNewNumber(2, 0, 0);
+	AddNewNumber(4, 1, 0);
+	AddNewNumber(8, 2, 0);
+	AddNewNumber(16, 3, 0);
+	AddNewNumber(32, 0, 1);
+	AddNewNumber(64, 1, 1);
+	AddNewNumber(128, 2, 1);
+	AddNewNumber(256, 3, 1);
+	AddNewNumber(512, 0, 2);
+	AddNewNumber(1024, 1, 2);
+	AddNewNumber(2048, 2, 2);*/
 }
 
 /**
@@ -208,6 +226,16 @@ void c2048::AddNewNumber(int nValue)
 	// Get random available cell
 	int nCellIndex = aAvailableCells[rand() % aAvailableCells.size()];
 
+	m_aGrid[nCellIndex].nValue = nValue;
+	m_aGrid[nCellIndex].nDestinationCellIndex = -1;
+}
+
+/**
+ * Adds the number to a specific cell
+ */
+void c2048::AddNewNumber(int nValue, int x, int y)
+{
+	int nCellIndex = GetCellIndex(x, y);
 	m_aGrid[nCellIndex].nValue = nValue;
 	m_aGrid[nCellIndex].nDestinationCellIndex = -1;
 }
@@ -307,23 +335,36 @@ bool c2048::MoveCells(ROTATION dir)
 	// For each row (if we think of a rotated grid)
 	for (int y = 0; y < 4; y++) {
 		bool bCellCanBeTarget[4] = { true, true, true, true };
+		bool bCellHasMerged[4] = { false,false,false,false };
 
 		// Ignore the first cell as there is nothing it can do
-		for (int x = 1; x < 4; x++) {
+		for (int x = 0; x < 4; x++) {
 			int nCurrentCellIndex = GetCellIndex(x, y, dir);
 
 			// Cell is empty - so nothing todo
 			if (m_aGrid[nCurrentCellIndex].nValue == 0)
 				continue;
 
+			if (m_aGrid[nCurrentCellIndex].nValue > 0 && x == 0) {
+				// First cell need no movement but some states
+				bCellCanBeTarget[0] = false;
+				m_aGrid[nCurrentCellIndex].nNewValue = m_aGrid[nCurrentCellIndex].nValue;
+				continue;
+			}
+
 			// Check all previous cells
 			bool bCellFinished = false;
 			for (int prevX = 0; prevX < x && !bCellFinished; prevX++) {
+				// Cell was already in a merge process so it can't be targeted again
+				if (bCellHasMerged[prevX])
+					continue;
+
 				int nPreviousCellIndex = GetCellIndex(prevX, y, dir);
 
 				// Previous cell can't be target
 				if (!bCellCanBeTarget[prevX] && m_aGrid[nPreviousCellIndex].nNewValue != m_aGrid[nCurrentCellIndex].nValue)
 					continue;
+
 
 				bCellCanBeTarget[prevX] = false;
 
@@ -337,17 +378,19 @@ bool c2048::MoveCells(ROTATION dir)
 					m_aGrid[nPreviousCellIndex].nDestinationCellIndex != -1 ||
 					m_aGrid[nPreviousCellIndex].nNewValue == m_aGrid[nCurrentCellIndex].nValue
 				) {
+					bCellHasMerged[prevX] = (m_aGrid[nPreviousCellIndex].nNewValue == m_aGrid[nCurrentCellIndex].nValue) || (m_aGrid[nPreviousCellIndex].nValue == m_aGrid[nCurrentCellIndex].nValue);
+					
 					m_aGrid[nCurrentCellIndex].nDestinationCellIndex = nPreviousCellIndex;
+					m_aGrid[nCurrentCellIndex].bNeedsAnimation = true;
+
 					m_aGrid[nPreviousCellIndex].nNewValue = m_aGrid[nCurrentCellIndex].nValue;
+					
 					bHasMoved = true;
 					bCellFinished = true;
 				}
 			}
 		}
 	}
-
-	if (bHasMoved)
-		CalculateCellMovement(dir);
 
 	return bHasMoved;
 }
@@ -375,6 +418,10 @@ void c2048::CalculateCellMovement(ROTATION dir)
 
 			m_aGrid[nCurrentCellIndex].nDestinationCellIndex = -1;
 			m_aGrid[nCurrentCellIndex].nValue = 0;
+			m_aGrid[nCurrentCellIndex].bNeedsAnimation = false;
+			m_aGrid[nCurrentCellIndex].fAnimOffsetX = 0.0f;
+			m_aGrid[nCurrentCellIndex].fAnimOffsetY = 0.0f;
+
 			m_aGrid[nTargetCellIndex].nNewValue = 0;
 		}
 	}
@@ -419,11 +466,9 @@ void c2048::GameStateStart(float fElapsedTime)
 	}
 
 	DrawGameField();
-	for (int x = 0; x < 4; x++) {
-		for (int y = 0; y < 4; y++) {
-			DrawCell(x, y);
-		}
-	}
+	for (int x = 0; x < 4; x++)
+		for (int y = 0; y < 4; y++)
+			DrawCell(GetCellIndex(x, y));
 }
 
 /**
@@ -506,5 +551,69 @@ void c2048::GameStateTitle(float fElapsedTime)
  */
 void c2048::GameStateAnimate(float fElapsedTime)
 {
+	bool bNeedsMoreAnimation = false;
+
 	DrawGameField();
+
+	for (int x = 0; x < 4; x++) {
+		for (int y = 0; y < 4; y++) {
+			int nCurrentCellIndex = GetCellIndex(x, y, m_nAnimationDirection);
+
+			if (m_aGrid[nCurrentCellIndex].bNeedsAnimation == false && m_aGrid[nCurrentCellIndex].nValue > 0) {
+				// Cell needs no animation but has a value
+				DrawCell(nCurrentCellIndex);
+			}
+			else if (m_aGrid[nCurrentCellIndex].bNeedsAnimation) {
+				// Cell needs to be animated
+				float fSpeedFactor = 6.0f;
+				float fMovementSpeed = 1.0f;
+				int nTargetCellIndex = m_aGrid[nCurrentCellIndex].nDestinationCellIndex;
+
+				if (m_nAnimationDirection == LEFT || m_nAnimationDirection == RIGHT)
+					fMovementSpeed = (float)abs(m_aGrid[nCurrentCellIndex].nPosX - m_aGrid[nTargetCellIndex].nPosX);
+				else
+					fMovementSpeed = (float)abs(m_aGrid[nCurrentCellIndex].nPosY - m_aGrid[nTargetCellIndex].nPosY);
+
+				float fAddition = fMovementSpeed * fElapsedTime * fSpeedFactor;
+
+				switch (m_nAnimationDirection) {
+				case LEFT:
+					m_aGrid[nCurrentCellIndex].fAnimOffsetX -= fAddition;
+					break;
+
+				case RIGHT:
+					m_aGrid[nCurrentCellIndex].fAnimOffsetX += fAddition;
+					break;
+
+				case TOP:
+					m_aGrid[nCurrentCellIndex].fAnimOffsetY -= fAddition;
+					break;
+
+				case DOWN:
+					m_aGrid[nCurrentCellIndex].fAnimOffsetY += fAddition;
+					break;
+				}
+
+				DrawCell(nCurrentCellIndex);
+
+				if (m_aGrid[nCurrentCellIndex].nPosX + (int)m_aGrid[nCurrentCellIndex].fAnimOffsetX != m_aGrid[nTargetCellIndex].nPosX ||
+					m_aGrid[nCurrentCellIndex].nPosY + (int)m_aGrid[nCurrentCellIndex].fAnimOffsetY != m_aGrid[nTargetCellIndex].nPosY) {
+				
+					bNeedsMoreAnimation |= true;
+				}
+				else {
+					// Animation for cell finished
+					m_aGrid[nCurrentCellIndex].bNeedsAnimation = false;
+				}
+			}
+		}
+	}
+
+	if (!bNeedsMoreAnimation) {
+		m_nGameState = GAME_STATE_START;
+		m_bHasMoved = false;
+
+		CalculateCellMovement(m_nAnimationDirection);
+		AddNewNumber();
+	}
 }
