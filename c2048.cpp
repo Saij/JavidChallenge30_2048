@@ -165,12 +165,8 @@ void c2048::ResetGameData(GAME_STATE state)
 	m_nGameState = state;
 
 	// Add 2 numbers in random cells
-	//AddNewNumber();
-	//AddNewNumber();
-
-	AddNewNumber(16, 3, 0);
-	AddNewNumber(8, 3, 1);
-	AddNewNumber(4, 3, 2);
+	AddNewNumber();
+	AddNewNumber();
 }
 
 /**
