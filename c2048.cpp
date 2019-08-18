@@ -32,8 +32,6 @@ bool c2048::OnUserCreate()
 	m_nFieldSize = (m_nTileSize + 1) * 4 + 1;
 	m_nFieldOffsetX = (int)(ScreenWidth() / 2 - m_nFieldSize / 2);
 
-	ResetGameData();
-
 	return true;
 }
 
@@ -125,14 +123,30 @@ void c2048::DrawCell(int nCellIndex, short nChar)
 	// Just draw a colored rectangle
 	Fill(nPosX, nPosY, nPosX + m_nTileSize, nPosY + m_nTileSize, nChar, nCellColor);
 
-	// Draw value of cell (only if greater then 0)
-	if (oCell.nValue > 0) {
+	// Draw value of cell (only if greater then 0 and less or equal 2048)
+	if (oCell.nValue > 0 && oCell.nValue <= 2048) {
 		wstring sCellText = to_wstring(oCell.nValue * (m_nNumberSystem / 2));
 		int nTextX = (int)(nPosX + (m_nTileSize / 2) - sCellText.length() / 2);
 		int nTextY = (int)(nPosY + m_nTileSize / 2);
 
 		DrawString(nTextX, nTextY, sCellText, nTextColor);
 	}
+}
+
+void c2048::ResetCell(int nCellIndex)
+{
+	int x = nCellIndex % 4;
+	int y = nCellIndex / 4;
+
+	m_aGrid[nCellIndex].nValue = 0;
+	m_aGrid[nCellIndex].nPosX = 1 + m_nFieldOffsetX + (x * (m_nTileSize + 1));
+	m_aGrid[nCellIndex].nPosY = 1 + y * (m_nTileSize + 1);
+	m_aGrid[nCellIndex].nDestinationCellIndex = -1;
+	m_aGrid[nCellIndex].bNeedsAnimation = false;
+	m_aGrid[nCellIndex].fAnimOffsetX = 0.0f;
+	m_aGrid[nCellIndex].fAnimOffsetY = 0.0f;
+	m_aGrid[nCellIndex].bHasSpecialAnimation = false;
+	m_aGrid[nCellIndex].fAnimationTime = 0.0f;
 }
 
 /**
@@ -148,14 +162,7 @@ void c2048::ResetGameData(GAME_STATE state)
 		for (int y = 0; y < 4; y++) {
 			int nCellIndex = GetCellIndex(x, y);
 
-			m_aGrid[nCellIndex].nValue = 0;
-			m_aGrid[nCellIndex].nPosX = 1 + m_nFieldOffsetX + (x * (m_nTileSize + 1));
-			m_aGrid[nCellIndex].nPosY = 1 + y * (m_nTileSize + 1);
-			m_aGrid[nCellIndex].nDestinationCellIndex = -1;
-			m_aGrid[nCellIndex].bNeedsAnimation = false;
-			m_aGrid[nCellIndex].fAnimOffsetX = 0.0f;
-			m_aGrid[nCellIndex].fAnimOffsetY = 0.0f;
-			m_aGrid[nCellIndex].bHasSpecialAnimation = false;
+			ResetCell(nCellIndex);
 		}
 	}
 
@@ -163,8 +170,8 @@ void c2048::ResetGameData(GAME_STATE state)
 	m_nGameState = state;
 
 	// Add 2 numbers in random cells
-	AddNewNumber(false);
-	AddNewNumber(false);
+	AddNewNumber();
+	AddNewNumber();	
 }
 
 /**
@@ -216,7 +223,6 @@ void c2048::AddNewNumber(int nValue, bool bAnimate)
 
 	if (bAnimate) {
 		m_nGameState = GAME_STATE_ANIMATE;
-		m_fAnimationTime = 0;
 	}
 }
 
@@ -296,6 +302,7 @@ void c2048::GetCellColor(int nValue, short& cellColor, short& textColor)
 		break;
 
 	case 2048:
+	case 4096:
 		cellColor = FG_WHITE;
 		textColor = FG_BLACK | BG_WHITE;
 		break;
@@ -421,8 +428,7 @@ void c2048::CalculateCellMovement(ROTATION dir)
 
 			if (m_aGrid[nTargetCellIndex].nValue == m_aGrid[nCurrentCellIndex].nValue)
 				// Combine those two cells
-				m_aGrid[nTargetCellIndex].
-				nValue += m_aGrid[nCurrentCellIndex].nValue;
+				m_aGrid[nTargetCellIndex].nValue += m_aGrid[nCurrentCellIndex].nValue;
 			else
 				// Move the cell
 				m_aGrid[nTargetCellIndex].nValue = m_aGrid[nCurrentCellIndex].nValue;
@@ -432,6 +438,12 @@ void c2048::CalculateCellMovement(ROTATION dir)
 			m_aGrid[nCurrentCellIndex].bNeedsAnimation = false;
 			m_aGrid[nCurrentCellIndex].fAnimOffsetX = 0.0f;
 			m_aGrid[nCurrentCellIndex].fAnimOffsetY = 0.0f;
+
+			if (m_aGrid[nTargetCellIndex].nValue > 2048) {
+				// Create explosion and remove cell
+				m_aGrid[nTargetCellIndex].bHasSpecialAnimation = true;
+				m_nGameState = GAME_STATE_ANIMATE;
+			}
 		}
 	}
 }
@@ -518,7 +530,7 @@ void c2048::GameStateTitle(float fElapsedTime)
 {
 	// First handle input
 	if (GetKey(VK_SPACE).bPressed) {
-		m_nGameState = GAME_STATE_START;
+		ResetGameData(GAME_STATE_START);
 		return;
 	}
 
@@ -627,13 +639,34 @@ void c2048::GameStateAnimate(float fElapsedTime)
 					bNeedsMoreAnimation = true;				
 			}
 			else if (m_aGrid[nCurrentCellIndex].bHasSpecialAnimation) {
-				m_fAnimationTime += fElapsedTime * m_nNewTileAnimationSpeed;
-				int nAnimationIndex = ((int)m_fAnimationTime) % m_nNewTileAnimation.size();
+				vector<short>* vecAnimation = nullptr;
+				int* nAnimationSpeed = nullptr;
 
-				DrawCell(nCurrentCellIndex, m_nNewTileAnimation[nAnimationIndex]);
+				if (m_aGrid[nCurrentCellIndex].nValue > 2048) {
+					vecAnimation = &m_nExplosionAnimation;
+					nAnimationSpeed = &m_nExplosionAnimationSpeed;
+				}
+				else {
+					vecAnimation = &m_nNewTileAnimation;
+					nAnimationSpeed = &m_nNewTileAnimationSpeed;
+				}
 
-				if (nAnimationIndex == m_nNewTileAnimation.size() - 1)
+				if (nAnimationSpeed == nullptr || vecAnimation == nullptr)
+					return;
+
+				m_aGrid[nCurrentCellIndex].fAnimationTime += fElapsedTime * *nAnimationSpeed;
+				int nAnimationIndex = ((int)m_aGrid[nCurrentCellIndex].fAnimationTime) % vecAnimation->size();
+
+				DrawCell(nCurrentCellIndex, vecAnimation->at(nAnimationIndex));
+
+				if (nAnimationIndex == vecAnimation->size() - 1) {
+					// Animation finished
 					m_aGrid[nCurrentCellIndex].bHasSpecialAnimation = false;
+					m_aGrid[nCurrentCellIndex].fAnimationTime = 0.0f;
+
+					if (m_aGrid[nCurrentCellIndex].nValue > 2048)
+						ResetCell(nCurrentCellIndex);
+				}
 				else
 					bNeedsMoreAnimation = true;
 

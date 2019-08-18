@@ -37,7 +37,4 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
-  <ItemGroup>
-    <Text Include="TODO" />
-  </ItemGroup>
 </Project>

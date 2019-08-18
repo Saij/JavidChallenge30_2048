@@ -29,6 +29,7 @@ struct sCell {
 	float fAnimOffsetX;
 	float fAnimOffsetY;
 	bool bHasSpecialAnimation;
+	float fAnimationTime;
 };
 
 class c2048 : public olcConsoleGameEngineOOP
@@ -48,15 +49,16 @@ private:
 	
 	vector<short> m_nBlinkAnimation{ FG_WHITE, FG_WHITE, FG_WHITE, FG_GREY, FG_DARK_GREY, FG_BLACK, FG_BLACK, FG_BLACK, FG_DARK_GREY, FG_GREY };
 	vector<short> m_nNewTileAnimation{ L' ', PIXEL_QUARTER, PIXEL_HALF, PIXEL_THREEQUARTERS, PIXEL_SOLID };
+	vector<short> m_nExplosionAnimation{ PIXEL_SOLID, PIXEL_THREEQUARTERS, PIXEL_SOLID, PIXEL_THREEQUARTERS, PIXEL_HALF, PIXEL_QUARTER, L' ' };
 	
 	int m_nBlinkAnimationSpeed = 10;
 	int m_nNewTileAnimationSpeed = 10;
-
-	float m_fAnimationTime = 0;
+	int m_nExplosionAnimationSpeed = 10;
 
 	int m_nTileSize = 5;
 	int m_nFieldSize = 0;
 	int m_nFieldOffsetX = 0;
+	float m_fAnimationTime = 0.0f;
 
 	bool m_bHasMoved = false;
 	ROTATION m_nAnimationDirection;
@@ -71,6 +73,7 @@ private:
 	void DrawCell(int nCellIndex, short nChar = PIXEL_SOLID);
 	void DrawGameField();
 	void ResetGameData(GAME_STATE state = GAME_STATE_TITLE);
+	void ResetCell(int nCellIndex);
 	vector<int> GetAvailableCells();
 	void AddNewNumber(bool bAnimate = true);
 	void AddNewNumber(int nValue, bool bAnimate = true);
