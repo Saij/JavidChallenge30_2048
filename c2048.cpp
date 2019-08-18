@@ -563,6 +563,14 @@ void c2048::GameStateAnimate(float fElapsedTime)
 	bool bNeedsMoreAnimation = false;
 	bool bNeedNewNumber = true;
 
+	auto CellIsFinished = [&](int nCurrent, int nTarget, float fOffset) -> bool {
+		int nBoundLeft = nTarget - 1;
+		int nBoundRight = nTarget + 1;
+		float fNewCurrent = nCurrent + fOffset;
+
+		return nBoundLeft < fNewCurrent && fNewCurrent < nBoundRight;
+	};
+
 	DrawGameField();
 
 	for (int x = 0; x < 4; x++) {
@@ -585,36 +593,38 @@ void c2048::GameStateAnimate(float fElapsedTime)
 					fMovementSpeed = (float)abs(m_aGrid[nCurrentCellIndex].nPosY - m_aGrid[nTargetCellIndex].nPosY);
 
 				float fAddition = fMovementSpeed * fElapsedTime * fSpeedFactor;
+				bool bIsFinished = false;
 
 				switch (m_nAnimationDirection) {
 				case LEFT:
 					m_aGrid[nCurrentCellIndex].fAnimOffsetX -= fAddition;
+					DrawCell(nCurrentCellIndex);
+					bIsFinished = CellIsFinished(m_aGrid[nCurrentCellIndex].nPosX, m_aGrid[nTargetCellIndex].nPosX, m_aGrid[nCurrentCellIndex].fAnimOffsetX);
 					break;
 
 				case RIGHT:
 					m_aGrid[nCurrentCellIndex].fAnimOffsetX += fAddition;
+					DrawCell(nCurrentCellIndex);
+					bIsFinished = CellIsFinished(m_aGrid[nCurrentCellIndex].nPosX, m_aGrid[nTargetCellIndex].nPosX, m_aGrid[nCurrentCellIndex].fAnimOffsetX);
 					break;
 
 				case TOP:
 					m_aGrid[nCurrentCellIndex].fAnimOffsetY -= fAddition;
+					DrawCell(nCurrentCellIndex);
+					bIsFinished = CellIsFinished(m_aGrid[nCurrentCellIndex].nPosY, m_aGrid[nTargetCellIndex].nPosY, m_aGrid[nCurrentCellIndex].fAnimOffsetY);
 					break;
 
 				case DOWN:
 					m_aGrid[nCurrentCellIndex].fAnimOffsetY += fAddition;
+					DrawCell(nCurrentCellIndex);
+					bIsFinished = CellIsFinished(m_aGrid[nCurrentCellIndex].nPosY, m_aGrid[nTargetCellIndex].nPosY, m_aGrid[nCurrentCellIndex].fAnimOffsetY);
 					break;
 				}
 
-				DrawCell(nCurrentCellIndex);
-
-				if (m_aGrid[nCurrentCellIndex].nPosX + (int)m_aGrid[nCurrentCellIndex].fAnimOffsetX != m_aGrid[nTargetCellIndex].nPosX ||
-					m_aGrid[nCurrentCellIndex].nPosY + (int)m_aGrid[nCurrentCellIndex].fAnimOffsetY != m_aGrid[nTargetCellIndex].nPosY) {
-				
-					bNeedsMoreAnimation |= true;
-				}
-				else {
-					// Animation for cell finished
+				if (bIsFinished)
 					m_aGrid[nCurrentCellIndex].bNeedsAnimation = false;
-				}
+				else
+					bNeedsMoreAnimation = true;				
 			}
 			else if (m_aGrid[nCurrentCellIndex].bHasSpecialAnimation) {
 				m_fAnimationTime += fElapsedTime * m_nNewTileAnimationSpeed;
@@ -622,13 +632,10 @@ void c2048::GameStateAnimate(float fElapsedTime)
 
 				DrawCell(nCurrentCellIndex, m_nNewTileAnimation[nAnimationIndex]);
 
-				if (nAnimationIndex == m_nNewTileAnimation.size() - 1) {
-					bNeedsMoreAnimation = false;
+				if (nAnimationIndex == m_nNewTileAnimation.size() - 1)
 					m_aGrid[nCurrentCellIndex].bHasSpecialAnimation = false;
-				}
-				else {
+				else
 					bNeedsMoreAnimation = true;
-				}
 
 				bNeedNewNumber = false;
 			}
