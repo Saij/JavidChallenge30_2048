@@ -114,8 +114,17 @@ void c2048::DrawCell(int nCellIndex, short nChar)
 
 	short nCellColor;
 	short nTextColor;
+	short nPrevBgColor;
 
-	GetCellColor(oCell.nValue, nCellColor, nTextColor);
+	GetCellColor(oCell.nValue, nCellColor, nTextColor, nPrevBgColor);
+
+	int nValue = oCell.nValue;
+	if (oCell.bHasBeenMerged) {
+		nCellColor |= nPrevBgColor;
+		if (nChar == L' ' || nChar == PIXEL_QUARTER || nChar == PIXEL_HALF)
+			nValue = 0;
+	}
+		
 
 	int nPosX = oCell.nPosX + (int)oCell.fAnimOffsetX;
 	int nPosY = oCell.nPosY + (int)oCell.fAnimOffsetY;
@@ -124,8 +133,8 @@ void c2048::DrawCell(int nCellIndex, short nChar)
 	Fill(nPosX, nPosY, nPosX + m_nTileSize, nPosY + m_nTileSize, nChar, nCellColor);
 
 	// Draw value of cell (only if greater then 0 and less or equal 2048)
-	if (oCell.nValue > 0 && oCell.nValue <= 2048) {
-		wstring sCellText = to_wstring(oCell.nValue * (m_nNumberSystem / 2));
+	if (nValue > 0 && nValue <= 2048) {
+		wstring sCellText = to_wstring(nValue * (m_nNumberSystem / 2));
 		int nTextX = (int)(nPosX + (m_nTileSize / 2) - sCellText.length() / 2);
 		int nTextY = (int)(nPosY + m_nTileSize / 2);
 
@@ -147,6 +156,7 @@ void c2048::ResetCell(int nCellIndex)
 	m_aGrid[nCellIndex].fAnimOffsetY = 0.0f;
 	m_aGrid[nCellIndex].bHasSpecialAnimation = false;
 	m_aGrid[nCellIndex].fAnimationTime = 0.0f;
+	m_aGrid[nCellIndex].bHasBeenMerged = false;
 }
 
 /**
@@ -248,61 +258,77 @@ void c2048::AddNewNumber(int nValue, int x, int y, bool bAnimate)
  *
  * Hardcoded because we only support till 2048
  */
-void c2048::GetCellColor(int nValue, short& cellColor, short& textColor)
+void c2048::GetCellColor(int nValue, short& cellColor, short& textColor, short& prevBgColor)
 {
 	switch (nValue) {
 	case 2:
+		prevBgColor = BG_BLACK;
 		cellColor = FG_YELLOW;
 		textColor = FG_BLACK | BG_YELLOW;
 		break;
 
 	case 4:
+		prevBgColor = BG_YELLOW;
 		cellColor = FG_DARK_YELLOW;
 		textColor = FG_BLACK | BG_DARK_YELLOW;
 		break;
 
 	case 8:
+		prevBgColor = BG_DARK_YELLOW;
 		cellColor = FG_RED;
 		textColor = FG_BLACK | BG_RED;
 		break;
 
 	case 16:
+		prevBgColor = BG_RED;
 		cellColor = FG_DARK_RED;
 		textColor = FG_BLACK | BG_DARK_RED;
 		break;
 
 	case 32:
+		prevBgColor = BG_DARK_RED;
 		cellColor = FG_BLUE;
 		textColor = FG_BLACK | BG_BLUE;
 		break;
 
 	case 64:
+		prevBgColor = BG_BLUE;
 		cellColor = FG_DARK_BLUE;
 		textColor = FG_BLACK | BG_DARK_BLUE;
 		break;
 
 	case 128:
+		prevBgColor = BG_DARK_BLUE;
 		cellColor = FG_GREEN;
 		textColor = FG_BLACK | BG_GREEN;
 		break;
 
 	case 256:
+		prevBgColor = BG_GREEN;
 		cellColor = FG_DARK_GREEN;
 		textColor = FG_BLACK | BG_DARK_GREEN;
 		break;
 
 	case 512:
+		prevBgColor = BG_DARK_GREEN;
 		cellColor = FG_CYAN;
 		textColor = FG_BLACK | BG_CYAN;
 		break;
 
 	case 1024:
+		prevBgColor = BG_CYAN;
 		cellColor = FG_DARK_CYAN;
 		textColor = FG_BLACK | BG_DARK_CYAN;
 		break;
 
 	case 2048:
+		prevBgColor = BG_DARK_CYAN;
+		cellColor = FG_WHITE;
+		textColor = FG_BLACK | BG_WHITE;
+		break;
+
 	case 4096:
+		prevBgColor = BG_BLACK;
 		cellColor = FG_WHITE;
 		textColor = FG_BLACK | BG_WHITE;
 		break;
@@ -426,9 +452,13 @@ void c2048::CalculateCellMovement(ROTATION dir)
 			if (nTargetCellIndex == -1)
 				continue;
 
-			if (m_aGrid[nTargetCellIndex].nValue == m_aGrid[nCurrentCellIndex].nValue)
+			if (m_aGrid[nTargetCellIndex].nValue == m_aGrid[nCurrentCellIndex].nValue) {
 				// Combine those two cells
 				m_aGrid[nTargetCellIndex].nValue += m_aGrid[nCurrentCellIndex].nValue;
+				m_aGrid[nTargetCellIndex].bHasBeenMerged = !(m_aGrid[nTargetCellIndex].nValue > 2048);
+				m_aGrid[nTargetCellIndex].bHasSpecialAnimation = true;
+				m_nGameState = GAME_STATE_ANIMATE;
+			}
 			else
 				// Move the cell
 				m_aGrid[nTargetCellIndex].nValue = m_aGrid[nCurrentCellIndex].nValue;
@@ -438,12 +468,6 @@ void c2048::CalculateCellMovement(ROTATION dir)
 			m_aGrid[nCurrentCellIndex].bNeedsAnimation = false;
 			m_aGrid[nCurrentCellIndex].fAnimOffsetX = 0.0f;
 			m_aGrid[nCurrentCellIndex].fAnimOffsetY = 0.0f;
-
-			if (m_aGrid[nTargetCellIndex].nValue > 2048) {
-				// Create explosion and remove cell
-				m_aGrid[nTargetCellIndex].bHasSpecialAnimation = true;
-				m_nGameState = GAME_STATE_ANIMATE;
-			}
 		}
 	}
 }
@@ -646,6 +670,10 @@ void c2048::GameStateAnimate(float fElapsedTime)
 					vecAnimation = &m_nExplosionAnimation;
 					nAnimationSpeed = &m_nExplosionAnimationSpeed;
 				}
+				else if (m_aGrid[nCurrentCellIndex].bHasBeenMerged == true) {
+					vecAnimation = &m_nMergeAnimation;
+					nAnimationSpeed = &m_nMergeAnimationSpeed;
+				}
 				else {
 					vecAnimation = &m_nNewTileAnimation;
 					nAnimationSpeed = &m_nNewTileAnimationSpeed;
@@ -662,6 +690,7 @@ void c2048::GameStateAnimate(float fElapsedTime)
 				if (nAnimationIndex == vecAnimation->size() - 1) {
 					// Animation finished
 					m_aGrid[nCurrentCellIndex].bHasSpecialAnimation = false;
+					m_aGrid[nCurrentCellIndex].bHasBeenMerged = false;
 					m_aGrid[nCurrentCellIndex].fAnimationTime = 0.0f;
 
 					if (m_aGrid[nCurrentCellIndex].nValue > 2048)

@@ -29,6 +29,7 @@ struct sCell {
 	float fAnimOffsetX;
 	float fAnimOffsetY;
 	bool bHasSpecialAnimation;
+	bool bHasBeenMerged;
 	float fAnimationTime;
 };
 
@@ -49,10 +50,12 @@ private:
 	
 	vector<short> m_nBlinkAnimation{ FG_WHITE, FG_WHITE, FG_WHITE, FG_GREY, FG_DARK_GREY, FG_BLACK, FG_BLACK, FG_BLACK, FG_DARK_GREY, FG_GREY };
 	vector<short> m_nNewTileAnimation{ L' ', PIXEL_QUARTER, PIXEL_HALF, PIXEL_THREEQUARTERS, PIXEL_SOLID };
+	vector<short> m_nMergeAnimation{ L' ', PIXEL_QUARTER, PIXEL_HALF, PIXEL_THREEQUARTERS, PIXEL_SOLID };
 	vector<short> m_nExplosionAnimation{ PIXEL_SOLID, PIXEL_THREEQUARTERS, PIXEL_SOLID, PIXEL_THREEQUARTERS, PIXEL_HALF, PIXEL_QUARTER, L' ' };
 	
 	int m_nBlinkAnimationSpeed = 10;
 	int m_nNewTileAnimationSpeed = 10;
+	int m_nMergeAnimationSpeed = 10;
 	int m_nExplosionAnimationSpeed = 10;
 
 	int m_nTileSize = 5;
@@ -78,7 +81,7 @@ private:
 	void AddNewNumber(bool bAnimate = true);
 	void AddNewNumber(int nValue, bool bAnimate = true);
 	void AddNewNumber(int nValue, int x, int y, bool bAnimate = true);
-	void GetCellColor(int nValue, short& cellColor, short& textColor);
+	void GetCellColor(int nValue, short& cellColor, short& textColor, short& prevBgColor);
 	void GameStateStart(float fElapsedTime);
 	void GameStateTitle(float fElapsedTime);
 	void GameStateAnimate(float fElapsedTime);
